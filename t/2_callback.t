@@ -14,8 +14,11 @@ use constant THIRD =>  2;
 use constant HOST1 => '127.0.0.1';
 use constant HOST2 => '127.0.0.2';
 use constant HOST3 => '127.0.0.3';
+use constant HOST4 => '127.0.0.4';
+use constant HOST5 => '127.0.0.5';
+use constant HOST6 => '127.0.0.6';
 
-use constant TEST_FILE =>'basic.xml';
+use constant TEST_FILE =>'nmap_results.xml';
 use vars qw($p $FH @up @down $total_count);
 
 
@@ -34,16 +37,16 @@ ok($p->parse_filters({scaninfo => 0}), 'Setting parse filter (no scaninfo)');
 sub my_callback {
 my $host = shift;
 my $addr = $host->addr();
-if($addr eq HOST1 || $addr eq HOST2 || $addr eq HOST3){
+if($addr =~ /127\.0\.0\./){
 $total_count++;}
 if($host->status eq 'up'){push @up, $addr;}
 elsif($host->status eq 'down'){push @down, $addr;}
 }
 
 #TESTING CALLBACK OUTPUT
-ok(eq_set([@up], [HOST1,HOST2]), 'Testing for correct up hosts');
+ok(eq_set([@up], [HOST1,HOST2, HOST4, HOST5, HOST6]), 'Testing for correct up hosts');
 ok(eq_set([@down], [HOST3]), 'Testing for correct down hosts');
-is($total_count, 3, 'Testing for correct callback paramater passing');
+is($total_count, 6, 'Testing for correct callback paramater passing');
 
 #CHECKING FOR DELETION
 my $test = $p->get_host(HOST1);

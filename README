@@ -1,4 +1,4 @@
-Nmap/Parser/XML version 0.66_1
+Nmap/Parser/XML version 0.68
 ============================
 
 nmap xml output parser in perl
@@ -38,18 +38,30 @@ CHANGES
 
 
 
-Changes from 0.66 to 0.66_1
+Changes from 0.66 to 0.68
+	- Licensing changes, now under GPL
+	- added signatures for wireless access points (wap)
+	- added os_match shortcut function
+	- Problem with Makefile.PL, didn't pass correct dependencies.
+	- tcp_port_state() and udp_port_state() return the state of the port
+		when passed a port number.
+	- Sorted port order when using tcp_ports and udp_ports
+	- extraports tag parsing. It is also set up as a filter 'extraports'
+		filtering. Added extraports_state and extraports_count to
+		Nmap::Parser::XML::Host class.
+	- Added and fix some documentation
+	- tcp_ports and udp_ports can take a parameter to filter what port list
+		you wish to receive. It selects states based on port content
+		state tag: filtered, closed, or open
         - previous versions (0.64 or earlier) of the parser, no arguments
 	to tcp_ports and udp_ports would return the whole hashref of all the
 	ports, this is now deprecated. Use the newly created functions
 	tcp_service_name, tcp_service_proto, tcp_service_rpcnum,
 	udp_service_name, udp_service_proto, and udp_service_rpcnum.
-	- passing a port number to tcp_ports and udp_ports returns the state
-	of the port.
-	- documentation changes
 	- changed default filter for solaris to include 'sun' and not 'sunos'
 	- more example scripts
 	- no more wantarray usage for tcp_ports and udp_ports
+	- more test cases
 
 FOR OTHER CHANGE INFORMATION SEE THE "CHANGES" FILE
 

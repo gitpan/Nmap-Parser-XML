@@ -22,8 +22,8 @@ else {printf("%-15s : v%.2f\n",$mod,$version);}
 WriteMakefile(
     'NAME'		=> 'Nmap::Parser::XML',
     'VERSION_FROM'	=> 'XML.pm', # finds $VERSION
-    'PREREQ_PM'		=> \%depend,
-    'ABSTRACT'		=> 'nmap xml output parser in perl',
+    'PREREQ_PM'		=> \%depends,
+    'ABSTRACT'		=> 'Nmap parser for XML output scan data',
     'AUTHOR'	       => 'Anthony G Persaud <ironstar@iastate.edu>'
 	);
 

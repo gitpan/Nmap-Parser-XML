@@ -1,18 +1,17 @@
 Changes
-examples/basic.xml
-examples/comma_delimited.txt
-examples/ex_1.pl
-examples/ex_1.xml
-examples/ex_2.pl
+examples/example.xml
+examples/nmap.dtd
+examples/nmap_std.xml
+examples/port_info.pl
+examples/status_check.pl
+LICENSE
 Makefile.PL
 MANIFEST			This list of files
-META.yml
 README
 t/0_api.t
 t/1_parser.t
 t/2_callback.t
 t/3_efficiency.t
-t/basic.xml
-t/nmap.dtd
-t/nmap_std.xml
+t/nmap_results.xml
 XML.pm
+META.yml                                Module meta-data (added by MakeMaker)

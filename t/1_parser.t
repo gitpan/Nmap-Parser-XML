@@ -6,7 +6,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 76;
+use Test::More tests => 162;
 use Nmap::Parser::XML;
 use constant FIRST => 0;
 use constant SECOND => 1;
@@ -14,8 +14,14 @@ use constant THIRD => 2;
 use constant HOST1 => '127.0.0.1';
 use constant HOST2 => '127.0.0.2';
 use constant HOST3 => '127.0.0.3';
+use constant HOST4 => '127.0.0.4';
+use constant HOST5 => '127.0.0.5';
+use constant HOST6 => '127.0.0.6';
 
-use constant TEST_FILE =>'basic.xml';
+
+
+
+use constant TEST_FILE =>'nmap_results.xml';
 use vars qw($host $p $FH $scaninfo @test %test $test);
 
 
@@ -29,28 +35,42 @@ nmap_parse_filter_test();
 nmap_parse_test();
 nmap_parse_std_test();
 nmap_parse_scaninfo_test();
-nmap_parse_host_test();
+nmap_parse_host_test_1();
+nmap_parse_host_test_2();
+nmap_parse_host_test_3();
+nmap_parse_host_test_4();
+nmap_parse_host_test_5();
+nmap_parse_host_test_6();
 nmap_parse_end_test();
 
-
+################################################################################
+##									      ##
+################################################################################
 sub nmap_parse_test {ok($p->parsefile($FH),'Parsing from nmap data: $FH');}
 
 sub nmap_parse_end_test {
+ok($p->del_host(HOST2),'Testing del_host');
+ok(!$p->get_host(HOST2),'Testing for permanent deletion from call');
+ok(eq_set([$p->get_host_list('up')],[HOST1, HOST4, HOST5, HOST6]),'Testing for permanent deletion from list');
 ok($p->clean(),'Testing clean() to clean memory');
 ok(!$p->get_scaninfo(),'Testing clean() against scaninfo');
 is(scalar $p->get_host_list(),0,'Testing clean() against host list');
 
 }
 
+################################################################################
+##									      ##
+################################################################################
 sub nmap_parse_std_test {
 
 
 %test = (solaris => [qw(solaris sparc sun)],
             linux => [qw(linux mandrake redhat slackware)],
             unix => [qw(unix hp-ux hpux bsd immunix aix)],
-            win  => [qw(win microsoft)],
+            win  => [qw(win microsoft workgroup)],
 	    mac => [qw(mac osx)],
-	    switch => [qw(ethernet cisco netscout router switch)],
+	    switch => [qw(ethernet cisco netscout router switch bridge)],
+	    wap => [qw(wireless wap)]
 	    );
 
 #OSFAMILY LIST
@@ -60,33 +80,33 @@ is_deeply($p->set_osfamily_list(\%test),\%test, 'Testing set_osfamily_list');
 is_deeply($p->get_osfamily_list(),\%test, 'Testing get_osfamily_list for premanence of structure');
 
 #GET HOST LIST
-ok(eq_set([$p->get_host_list()],[HOST2,HOST1,HOST3]), 'Testing get_host_list for correct hosts from file');
-ok(eq_set([$p->get_host_list('up')],[HOST2,HOST1]), 'Testing get_host_list for correct hosts with status = up');
+ok(eq_set([$p->get_host_list()],[HOST1, HOST2, HOST3, HOST4, HOST5, HOST6]), 'Testing get_host_list for correct hosts from file');
+ok(eq_set([$p->get_host_list('up')],[HOST1,HOST2, HOST4, HOST5, HOST6]), 'Testing get_host_list for correct hosts with status = up');
 ok(eq_set([$p->get_host_list('down')],[HOST3]), 'Testing get_host_list for correct hosts for with status = down');
 
 #FILTER BY OSFAMILY
-ok(eq_set([$p->filter_by_osfamily('solaris')],[HOST2]),'Testing single osfamily filter');
-ok(eq_set([$p->filter_by_osfamily('solaris','linux')],[HOST2,HOST1]), 'Testing multiple osfamily filter');
+print $p->filter_by_osfamily('solaris','linux'),"\n";
+ok(eq_set([$p->filter_by_osfamily('solaris')],[HOST2, HOST6]),'Testing single osfamily filter');
+ok(eq_set([$p->filter_by_osfamily('solaris','linux')],[HOST2,HOST1,HOST6]), 'Testing multiple osfamily filter');
 
 #FILTER BY STATUS
-ok(eq_set([$p->filter_by_status('up')],[HOST2,HOST1]),'Testing status filter - up');
+ok(eq_set([$p->filter_by_status('up')],[HOST1,HOST2, HOST4, HOST5, HOST6]),'Testing status filter - up');
 ok(eq_set([$p->filter_by_status('down')],[HOST3]),'Testing status filter - down');
-ok(eq_set([$p->filter_by_status()],[HOST2,HOST1]),'Testing status filter - default');
+ok(eq_set([$p->filter_by_status()],[HOST1,HOST2, HOST4, HOST5, HOST6]),'Testing status filter - default');
 
 @test = sort {$a->addr() cmp $b->addr()} $p->get_host_objects();
-is(scalar @test, 3,'Testing for number of host objects');
+is(scalar @test, 6,'Testing for number of host objects');
 
 #ADDR TEST
 is($test[FIRST]->addr(), HOST1,'Testing for host object 1');
 is($test[SECOND]->addr(), HOST2,'Testing for host object 2');
 is($test[THIRD]->addr(), HOST3,'Testing for host object 3');
 
-ok($p->del_host(HOST2),'Testing del_host');
-ok(!$p->get_host(HOST2),'Testing for permanent deletion from call');
-ok(eq_set([$p->get_host_list('up')],[HOST1]),'Testing for permanent deletion from list');
-
 }
 
+################################################################################
+##									      ##
+################################################################################
 sub nmap_parse_scaninfo_test {
 isa_ok($scaninfo = $p->get_scaninfo(), 'Nmap::Parser::XML::ScanInfo');
 
@@ -112,8 +132,11 @@ is($scaninfo->proto_of_scan_type('connect'), 'tcp','Testing "connect" protocol =
 is($scaninfo->proto_of_scan_type('udp'), 'udp','Testing "udp" protocol = udp');
 }
 
-
-sub nmap_parse_host_test {
+################################################################################
+##									      ##
+################################################################################
+sub nmap_parse_host_test_1 {
+print "\n\nTesting ".HOST1."\n";
 isa_ok($host = $p->get_host(HOST1),'Nmap::Parser::XML::Host');
 
 #BASIC
@@ -127,19 +150,30 @@ is($host->hostnames(), 1,'Testing for correct hostname count (void)');
 is($host->hostnames(1), 'localhost.localdomain','Testing for correct hostname (1)');
 
 #PORTS
+is($host->extraports_state(),'closed','Testing extraports_state');
+is($host->extraports_count(),2038,'Testing extraports_count');
+
 is(scalar @{[$host->tcp_ports()]} , 6, 'Testing for tcp_ports(6)');
 is(scalar @{[$host->udp_ports()]} , 2, 'Testing for udp_ports(2)');
+
 is($host->tcp_ports_count , 6, 'Testing for tcp_ports_count(6)');
 is($host->udp_ports_count , 2, 'Testing for udp_ports_count(2)');
 
-ok(eq_set([$host->tcp_ports()],[qw(25 22 631 443 111 80)]),'Testing tcp ports found');
-ok(eq_set([$host->udp_ports()],[qw(937 111)]),'Testing udp ports found');
+
+is_deeply([$host->tcp_ports()],[qw(22 25 80 111 443 631)],'Testing tcp ports found');
+is_deeply([$host->udp_ports()],[qw(111 937)],'Testing udp ports found');
+is_deeply([$host->tcp_ports('open')],[qw(80 111 443 631)],'Testing tcp ports "open"');
+is_deeply([$host->tcp_ports('filtered')],[qw(22 25)],'Testing tcp ports "filtered"');
+is_deeply([$host->udp_ports('open')],[qw(111)],'Testing udp ports "open"');
+is_deeply([$host->udp_ports('closed')],[qw(937)],'Testing udp ports "closed"');
+
 
 %test = (service_name => 'rpcbind',service_proto => 'rpc',service_rpcnum => 100000);
 
-is($host->tcp_ports('22'),'filtered','Testing tcp_ports(port_number) filtered');
-is($host->udp_ports('111'),'open','Testing udp_ports(port_number) open');
-is($host->udp_ports('9999'),'closed','Testing udp_ports(port_number) closed');
+
+is($host->tcp_port_state('22'),'filtered','Testing tcp_ports(port_number) filtered');
+is($host->udp_port_state('111'),'open','Testing udp_ports(port_number) open');
+is($host->udp_port_state('9999'),'closed','Testing udp_ports(port_number) closed');
 
 
 
@@ -157,7 +191,8 @@ is($host->udp_service_rpcnum('111'), 100000, 'Testing udp_service_rpcnum(111)');
 #OS MATCHES
 is(scalar @{[$host->os_matches()]} , 1,'Testing os_matches()');
 is(scalar $host->os_matches(),1,'Testing for correct OS');
-is($host->os_matches(1), 'Linux Kernel 2.4.0 - 2.5.20','Testing for correct OS');
+is($host->os_match, 'Linux Kernel 2.4.0 - 2.5.20','Testing os_match');
+is($host->os_matches(1), 'Linux Kernel 2.4.0 - 2.5.20','Testing os_matches(1)');
 
 #OS CLASS
 is_deeply([$host->os_class() ],['Linux','2.4.x','Linux','general purpose'],'Testing os_class() with no args');
@@ -179,12 +214,184 @@ is_deeply([$host->ipidsequence()],['All zeros','0,0,0,0,0,0'],'Testing ipidseque
 is_deeply([$host->tcptssequence()],['100HZ','30299,302A5,302B1,302BD,302C9,302D5'],'Testing tcptssequence class,values');
 
 #UPTIME
-is($host->uptime_seconds() , 1973, 'Testing uptime_seconds() : ');
-is($host->uptime_lastboot() ,'Tue Jul  1 14:15:27 2003', 'Testing uptime_lastboot() : ');
+is($host->uptime_seconds() , 1973, 'Testing uptime_seconds()');
+is($host->uptime_lastboot() ,'Tue Jul  1 14:15:27 2003', 'Testing uptime_lastboot()');
+
+}
+
+################################################################################
+##									      ##
+################################################################################
+sub nmap_parse_host_test_2 {
+print "\n\nTesting ".HOST2."\n";
+isa_ok($host = $p->get_host(HOST2),'Nmap::Parser::XML::Host');
+
+#BASIC
+is($host->status(), 'up', 'Testing if status = up');
+is($host->addr(), HOST2, 'Testing for correct address');
+is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
+
+#HOSTNAMES
+is($host->hostname(), 'LocalHost 2','Testing basic hostname()');
+is($host->hostnames(), 1,'Testing for correct hostname count (void)');
+is($host->hostnames(1), 'LocalHost 2','Testing for correct hostname (1)');
+
+#PORTS
+is($host->extraports_state(),'closed','Testing extraports_state');
+is($host->extraports_count(),2044,'Testing extraports_count');
+
+is(scalar @{[$host->tcp_ports()]} , 2, 'Testing for tcp_ports(6)');
+is(scalar @{[$host->udp_ports()]} , 0, 'Testing for udp_ports(2)');
+
+is($host->tcp_ports_count , 2, 'Testing for tcp_ports_count(6)');
+is($host->udp_ports_count , 0, 'Testing for udp_ports_count(2)');
+
+
+is_deeply([$host->tcp_ports()],[qw(22 80)],'Testing tcp ports found');
+is_deeply([$host->udp_ports()],[qw()],'Testing udp ports found');
+is_deeply([$host->tcp_ports('open')],[qw(22 80)],'Testing tcp ports "open"');
+is_deeply([$host->tcp_ports('filtered')],[qw()],'Testing tcp ports "filtered"');
+is_deeply([$host->udp_ports('open')],[qw()],'Testing udp ports "open"');
+is_deeply([$host->udp_ports('closed')],[qw()],'Testing udp ports "closed"');
+
+is($host->tcp_port_state('22'),'open','Testing tcp_ports(port_number) open');
+is($host->tcp_port_state('80'),'open','Testing tcp_ports(port_number) open');
+
+
+
+#TCP AND UDP SERVICE NAMES
+is($host->tcp_service_name('22'), 'ssh','Testing tcp_service_name(22) = sshd');
+is($host->tcp_service_name('80'), 'http','Testing tcp_service_name(80) = http');
+
+#OS MATCHES
+is(scalar @{[$host->os_matches()]} , 1,'Testing os_matches()');
+is(scalar $host->os_matches(),1,'Testing for correct OS');
+is($host->os_matches(1), 'Sun Solaris 8 early access beta through actual release','Testing for correct OS');
+
+#OS CLASS
+is_deeply([$host->os_class() ],['Solaris','8','Sun','general purpose'],'Testing os_class() with no args');
+is($host->os_class('total'),1,'Testing total count of os_class tags');
+
+#OSFAMILY
+is($host->os_family(),'solaris','Testing os_generic() = solaris');
+
+#SEQUENCES
+is_deeply([$host->tcpsequence()],['truly random','4B1CC657,99519A3F,9F934F86,74DAA2B1,9A935F26,EC151FED',9999999],'Testing tcpsequence class,values,index');
+is_deeply([$host->ipidsequence()],['Incremental','FF62,FF63,FF64,FF65,FF66,FF67'],'Testing ipidsequence class,values');
+is_deeply([$host->tcptssequence()],['100HZ','AF591DD,AF591E9,AF591F5,AF59201,AF5920D,AF59219'],'Testing tcptssequence class,values');
+
+#UPTIME
+is($host->uptime_seconds() , 1838659, 'Testing uptime_seconds() : ');
+is($host->uptime_lastboot() ,'Wed Jun 11 09:13:35 2003', 'Testing uptime_lastboot() : ');
 
 }
 
 
+################################################################################
+##									      ##
+################################################################################
+sub nmap_parse_host_test_3 {
+print "\n\nTesting ".HOST3."\n";
+isa_ok($host = $p->get_host(HOST3),'Nmap::Parser::XML::Host');
+
+#BASIC
+is($host->status(), 'down', 'Testing if status = up');
+is($host->addr(), HOST3, 'Testing for correct address');
+is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
+}
+
+################################################################################
+##									      ##
+################################################################################
+sub nmap_parse_host_test_4 {
+print "\n\nTesting ".HOST4."\n";
+isa_ok($host = $p->get_host(HOST4),'Nmap::Parser::XML::Host');
+
+#BASIC
+is($host->status(), 'up', 'Testing if status = up');
+is($host->addr(), HOST4, 'Testing for correct address');
+is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
+is($host->hostname(), 'host1', 'Testing hostname');
+#PORTS
+is($host->extraports_state(),'closed','Testing extraports_state');
+is($host->extraports_count(),1640,'Testing extraports_count');
+
+is_deeply([$host->tcp_ports()],[qw(22 23 80 135)],'Testing tcp ports found');
+is_deeply([$host->tcp_ports('filtered')],[qw(22 23 80 135)],'Testing tcp ports "filtered"');
+
+
+is($host->tcp_port_state('22'),'filtered','Testing tcp_ports(port_number) filtered');
+is($host->tcp_port_state('80'),'filtered','Testing tcp_ports(port_number) filtered');
+
+
+
+#TCP AND UDP SERVICE NAMES
+is($host->tcp_service_name('135'), 'loc-srv','Testing tcp_service_name(135) = loc-srv');
+is($host->tcp_service_name('23'), 'telnet','Testing tcp_service_name(80) = telnet');
+
+}
+
+
+################################################################################
+##									      ##
+################################################################################
+sub nmap_parse_host_test_5 {
+print "\n\nTesting ".HOST5."\n";
+isa_ok($host = $p->get_host(HOST5),'Nmap::Parser::XML::Host');
+
+#BASIC
+is($host->status(), 'up', 'Testing if status = up');
+is($host->addr(), HOST5, 'Testing for correct address');
+is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
+is($host->hostname(), 'host2', 'Testing hostname');
+is($host->extraports_state(),'filtered','Testing extraports_state');
+is($host->extraports_count(),1644,'Testing extraports_count');
+
+}
+
+################################################################################
+##									      ##
+################################################################################
+sub nmap_parse_host_test_6 {
+print "\n\nTesting ".HOST6."\n";
+isa_ok($host = $p->get_host(HOST6),'Nmap::Parser::XML::Host');
+
+#BASIC
+is($host->status(), 'up', 'Testing if status = up');
+is($host->addr(), HOST6, 'Testing for correct address');
+is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
+is($host->hostname(), 'host7.net', 'Testing hostname');
+
+
+#OS MATCHES
+is(scalar @{[$host->os_matches()]} , 9,'Testing os_matches()');
+is(scalar $host->os_matches(),9,'Testing for correct OS');
+is($host->os_matches(1), $host->os_match(),'Testing for correct OS 1');
+is($host->os_matches(1), 'Redback SMS 1800/10000 router or Thomson TMC 390 cable modem','Testing for correct OS 1');
+is($host->os_matches(2), 'Redback SMS 1800 router','Testing for correct OS 2');
+is($host->os_matches(3), 'Fore ForeThought 7.1.0 ATM switch','Testing for correct OS 3');
+is($host->os_matches(4), 'Xerox Docuprint N2125 network printer','Testing for correct OS 4');
+is($host->os_matches(5), 'Redback SMS 1000-2000 DSL Router','Testing for correct OS 5');
+is($host->os_matches(6), 'SonicWall SOHO firewall, Enterasys Matrix E1, or Accelerated Networks VoDSL, or Cisco 360 Access Point','Testing for correct OS 6');
+is($host->os_matches(7), 'Alcatel 1000 DSL Router','Testing for correct OS 7');
+is($host->os_matches(8), 'Sun RSC (Remote System Control card) v1.14 (in Solaris 2.7)','Testing for correct OS 8');
+is($host->os_matches(9), 'Cisco 11151/Arrowpoint 150 load balancer, Neoware (was HDS) NetOS V. 2.0.1 or HP ENTRIA C3230A','Testing for correct OS 9');
+
+
+#OS CLASS
+is_deeply([$host->os_class(1) ],['AOS','','Redback','router'],'Testing os_class() with no args');
+is_deeply([$host->os_class(15)],['embedded','','3Com','WAP'],'Testing os_class() with arg 1');
+is($host->os_class('total'),36,'Testing total count of os_class tags');
+
+#OSFAMILY
+is($host->os_family(),'solaris,switch','Testing os_generic() = switch');
+
+}
+
+
+################################################################################
+##									      ##
+################################################################################
 sub nmap_parse_filter_test {
 
 
@@ -194,7 +401,8 @@ sub nmap_parse_filter_test {
 	only_active	=> 0,
 	sequences 	=> 0,
 	portinfo	=> 0,
-	uptime		=> 0
+	uptime		=> 0,
+	extraports	=> 0,
 	);
 
 is_deeply($p->parse_filters(\%test),\%test,'Testing parse filter set');
@@ -205,7 +413,8 @@ is_deeply($p->parse_filters(\%test),\%test,'Testing parse filter set');
 	only_active	=> 1,
 	sequences 	=> 0,
 	portinfo	=> 0,
-	uptime		=> 0
+	uptime		=> 0,
+	extraports	=> 0,
 	);
 
 is_deeply($p->parse_filters({only_active=>1,scaninfo=>1}),\%test,'Testing for filter permanence');
@@ -215,7 +424,8 @@ is_deeply($p->parse_filters({only_active=>1,scaninfo=>1}),\%test,'Testing for fi
 	only_active	=> 0,
 	sequences 	=> 1,
 	portinfo	=> 1,
-	uptime		=> 1
+	uptime		=> 1,
+	extraports	=> 1,
 	);
 
 is_deeply($p->reset_filters(),\%test,'Testing reset_filters()');
