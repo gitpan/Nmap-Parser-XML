@@ -22,7 +22,7 @@ else {printf("%-15s : v%.2f\n",$mod,$version);}
 
 
 WriteMakefile(
-    ABSTRACT		=> 'Nmap parser for XML output scan data',
+    ABSTRACT		=> 'nmap parser for XML output scan data',
     AUTHOR		=> 'Anthony G Persaud <ironstar@iastate.edu>',
     clean		=> {FILES => "*.tar *.old"},
     PM_FILTER 		=> 'grep -v "^\\#"',

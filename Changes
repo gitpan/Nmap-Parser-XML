@@ -1,7 +1,14 @@
 Revision history for Perl extension Nmap::Parser::XML.
-The latest version can be found at:
 
-http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+Latest version: http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+Website:        http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/
+
+Changes for 0.70
+	- updated changes from 0.69
+	- updated documentation
+	- fixed documentation bug of all the example scripts
+	- updated examples script: they are more robust. Can either take
+		the example file as input, or actually run scans.
 
 Changes for 0.69
 	- new utility script : scan_host.pl

@@ -1,8 +1,9 @@
 Changes				Information about the changes
-examples/example.xml
+examples/example.xml		Example xml file used by example scripts
 examples/nmap.dtd		Old standard for nmap xml
 examples/nmap_std.xml
 examples/port_info.pl		Takes port info to a CSV file
+examples/port_info_out.csv	Comma-Delimited output of port_info.pl
 examples/scan_host.pl		Scans a set of hosts and retrieves information
 examples/status_check.pl	Checks the status of hosts
 LICENSE				GPL

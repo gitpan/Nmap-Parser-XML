@@ -21,69 +21,40 @@ use strict;
 use Nmap::Parser::XML;
 use Getopt::Long;
 use File::Spec;
-#Lets you have options like -st equivalent to (-s -t)
-Getopt::Long::Configure('bundling');
 use Pod::Usage;
 use vars qw(%G);
+use constant CMD1 => 'nmap -sS -O -v -v -v -oX - ';
+use constant CMD2 => 'nmap -sT -O -F -v -v -v -oX - ';
+use constant TEST_FILE => 'example.xml';
+
+Getopt::Long::Configure('bundling');
+
+
 my $p = new Nmap::Parser::XML;
 
-
-########################
-use constant TEST_FILE => 'example.xml';
-use constant OUT_FILE => 'port_info_out.csv';
-use File::Spec;
-
-my $FH;
-$FH ||= File::Spec->catfile(File::Spec->curdir(),    TEST_FILE);
-$FH = File::Spec->catfile(File::Spec->curdir(),'examples',TEST_FILE) if(! -e $FH);
-########################
-print "\nScan Host\t\tv0.69\n",('-'x60),"\n";
-my $val = GetOptions(
+print "\nScan Host\t".(scalar localtime)."\n",('-'x50),"\n\n";
+GetOptions(
 		'help|h|?'		=> \$G{helpme},
 		'F'		=> \$G{fast},
 		'v+'		=> \$G{verbose},
-		'f=s'		=> \$G{usefile},
+		'i=s'		=> \$G{usefile},
 ) or (pod2usage(-exitstatus => 0, -verbose => 1));
 
-if($G{helpme}){pod2usage(-exitstatus => 0, -verbose => 1)}
+if($G{helpme} || ($G{usefile} eq '' && scalar @ARGV == 0))
+	{pod2usage(-exitstatus => 0, -verbose => 1)}
+
 #Setup parser callback
 $p->register_host_callback(\&host_handler);
-#just in case nothing is passed
-if($G{usefile} eq '' && scalar @ARGV == 0){$G{usefile} = TEST_FILE;}
-
 
 
 
 #If using input file, then don't run nmap and use file
-if($G{usefile} eq ''){
-	my @ips = @ARGV;
-	my $NMAP;
-	my $cmd;
-	if($G{fast}){
-	print "FastScan enabled\n" if($G{verbose} > 0 && $G{fast});
-	$cmd = join ' ', ('nmap -sS -O -v -v -v -oX - ', @ips);
-	} else {
-	$cmd = join ' ', ('nmap -sT -O -F -v -v -v -oX - ', @ips);
-	}
-
-
-	my $nmap_exe = find_exe('nmap');
-	if($nmap_exe eq '')
-	{print STDERR "ERROR: nmap executable not found in \$PATH\n";exit;}
-
-	print 'Running: '.$cmd."\n" if($G{verbose} > 0);
-
-	open $NMAP , "$cmd |" || die "ERROR: $!\n";
-	$p->parse($NMAP);
-	close $NMAP;
-
-}
-elsif (not -e $G{usefile}){
-	print STDERR "ERROR: File $G{usefile} does not exists!\n";exit;
-
-} else {
+if($G{usefile} eq ''){$p = run_nmap_scan(@ARGV);}
+else {
 	#use the input file
 	print 'Using InputFile: '.$G{usefile}."\n" if($G{verbose} > 0);
+	if(not -e $G{usefile})
+	{print STDERR "ERROR: File $G{usefile} does not exists!\n"; exit;}
 	$p->parsefile($G{usefile});
 	}
 
@@ -92,7 +63,7 @@ elsif (not -e $G{usefile}){
 
 sub host_handler {
 my $host = shift;
-print $host->addr."\n";
+print ' > '.$host->addr."\n";
 print "\t[+] Status: (".uc($host->status).")\n";
 if($host->status ne 'up'){goto END;}
 	tab_print("Hostname(s)",$host->hostnames());
@@ -105,17 +76,26 @@ print "\n\n";
 
 #Quick function to print witht tabs
 sub tab_print {print "\t[+] $_[0] :\n";shift;for my $a (@_){print "\t\t$a\n";}}
-sub port_service_print {
-my $host = shift;
-print "\t[+] TCP Ports :\n";
-for my $port ($host->tcp_ports()){
-printf("\t\t%-6s %-20s %s\n", $port, $host->tcp_service_name($port), $host->tcp_service_product($port).' '.$host->tcp_service_version($port));
-}
 
-print "\t[+] UDP Ports :\n" if($host->udp_ports_count);
-for my $port ($host->udp_ports()){
-printf("\t\t%-6s %-20s %s\n", $port, $host->udp_service_name($port), $host->udp_service_product($port).' '.$host->udp_service_version($port));
-}
+sub port_service_print {
+	my $host = shift;
+	print "\t[+] TCP Ports :\n";
+	for my $port ($host->tcp_ports()){
+	printf("\t\t%-6s %-20s %s\n",
+			$port,
+			$host->tcp_service_name($port),
+			$host->tcp_service_product($port).' '.
+			$host->tcp_service_version($port));
+	}
+
+	print "\t[+] UDP Ports :\n" if($host->udp_ports_count);
+	for my $port ($host->udp_ports()){
+	printf("\t\t%-6s %-20s %s\n",
+			$port,
+			$host->udp_service_name($port),
+			$host->udp_service_product($port).' '.
+			$host->udp_service_version($port));
+	}
 
 }
 
@@ -139,7 +119,6 @@ shift if(ref($_[0]) eq caller());
             next unless($file eq $exe_to_find);
 
             $path = File::Spec->catfile($dir,$file);
-            #  Should symbolic link be considered?  Helps me on cygwin but ...
             next unless -r $path && (-x _ || -l _);
 
             return $path;
@@ -149,15 +128,36 @@ shift if(ref($_[0]) eq caller());
 
 }
 
+sub run_nmap_scan {
+my @ips =  grep {/(?:\d+\.){3}\d+/} @_;
+my $NMAP;
+	my $cmd;
+	if($G{fast}){
+	print "FastScan enabled\n" if($G{verbose} > 0 && $G{fast});
+	$cmd = join ' ', (CMD2, @ips);
+	} else {
+	$cmd = join ' ', (CMD1, @ips);
+	}
+
+
+	my $nmap_exe = find_exe('nmap');
+	if($nmap_exe eq '')
+	{print STDERR "ERROR: nmap executable not found in \$PATH\n";exit;}
+
+	print 'Running: '.$cmd."\n" if($G{verbose} > 0);
+
+	open $NMAP , "$cmd |" || die "ERROR: $!\n";
+	$p->parse($NMAP);
+	close $NMAP;
+return $p;
+}
+
 __END__
-
-
 =pod
 
 =head1 NAME
 
-ScanHost - simple scanning script to gather information from various hosts
-using the nmap security scanner and the Nmap::Parser::XML module.
+scan_host - a scanning script to gather port and OS information from hosts
 
 =head1 SYNOPSIS
 
@@ -174,11 +174,11 @@ Nmap::Parser::XML module.
 
 =head1 OPTIONS
 
-These options are passes as command line parameters.
+These options are passed as command line parameters.
 
 =over 4
 
-=item B<-f nmapscan.xml>
+=item B<-i nmapscan.xml>
 
 Runs the script using the given xml file (which is nmap xml scan data) instead
 of actually running a scan against the given set of hosts. This is useful if
@@ -199,8 +199,53 @@ the script will be.
 
 =back 4
 
+=head1 OUTPUT EXAMPLE
+
+These are ONLY examples of how the output would look like.
+
+ Scan Host
+ --------------------------------------------------
+ [>] 127.0.0.1
+       [+] Status: (UP)
+       [+] Hostname(s) :
+               localhost.localdomain
+       [+] Operation System(s) :
+               Linux Kernel 2.4.0 - 2.5.20
+       [+] TCP Ports :
+               22     ssh                  OpenSSH 3.5p1
+               25     smtp
+               111    rpcbind
+               443    https
+               631    ipp
+       [+] UDP Ports :
+               111    rpcbind
+               937    unknown
+
+
+=head1 SEE ALSO
+
+L<Nmap::Parser::XML>
+
+The Nmap::Parser::XML page can be found at:
+L<http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/>. It contains
+the latest developments on the module. The nmap security scanner homepage can
+be found at: L<http://www.insecure.org/nmap/>.
+
 =head1 AUTHOR
 
  Anthony G Persaud <ironstar@iastate.edu>
+
+=head1 COPYRIGHT
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+L<http://www.opensource.org/licenses/gpl-license.php>
 
 =cut

@@ -12,7 +12,7 @@ use constant IGNORE_ADDPORT 	=> 1;
 
 no warnings;
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 sub new {
 
@@ -1293,7 +1293,10 @@ Returns the time and date the given host was last rebooted.
 
 =head1 EXAMPLES
 
-=head3 Piping to NPX
+These are a couple of examples to help you create custom security audit tools
+using some of the features of the Nmap::Parser::XML module.
+
+=head2 Piping to the parser directly
 
 You can pipe the nmap output from the shell into the Nmap::Parser::XML object.
 The important detail to keep in mind is to remember to use the nmap switch:
@@ -1303,15 +1306,18 @@ The important detail to keep in mind is to remember to use the nmap switch:
 
  my $npx = new Nmap::Parser::XML;
  #this is a simple example (no input checking done)
+
  my @hosts = @ARGV; #Get hosts from stdin
+
  #Will construct a TCP-scan with OS detection
  #see nmap documentation for information on command-line switches
 
  my $cmd = 'nmap -sT -O -oX - '.join(' ',@hosts);
 
+ #running command and piping it through $FH
  open $FH , "$cmd |" || die "Could not run nmpa scan: $!\n";
 
- $npx->parse($FH);
+ $npx->parse($FH); #sending a filehandle ($FH) to the parser ($npx)
 
  close $FH; #close will wait until parse() gets all the input
 
@@ -1322,7 +1328,8 @@ The important detail to keep in mind is to remember to use the nmap switch:
 
  __END__
 
-=head3 Using Register-Callback
+
+=head2 Using Register-Callback
 
 This is probably the easiest way to write a script with using Nmap::Parser::XML,
 if you don't need the general scan information. During the parsing process, the
@@ -1342,16 +1349,17 @@ callback function is called for every host that the parser encounters.
  $npx->parsefile('scanfile.xml');
 
  sub my_function_here {
- #you will receive a Nmap::Parser::XML::Host object for the current host
- #that has just been finished scanned (or parsing)
- my $host = shift;
- print 'Scanned IP: '.$host->addr()."\n";
- # ... do more stuff with $host ...
+	 #you will receive a Nmap::Parser::XML::Host object for the current host
+	 #that has just been finished scanned (or parsing)
 
- #when this function returns, the parser will delete the host information
- #that it was holding (referring to $host).
+     my $host = shift;
+     print 'Scanned IP: '.$host->addr()."\n";
+	 # ... do more stuff with $host ...
 
- return;
+	 #when this function returns, the parser will delete the host
+	 #information that it was holding (referring to $host).
+
+     return;
 
  }
 
@@ -1359,13 +1367,15 @@ callback function is called for every host that the parser encounters.
 
  nmap, L<XML::Twig>
 
- http://www.insecure.org/nmap/
- http://www.xmltwig.com
+The Nmap::Parser::XML page can be found at:
+L<http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/>. It contains
+the latest developments on the module. The nmap security scanner homepage can
+be found at: L<http://www.insecure.org/nmap/>.
 
 =head1 ACKNOWLEDGEMENTS
 
-Thanks to everyone who has inspired and have provided feedback to improve and
-enhance this module.
+Thanks to everyone who have provided feedback to improve and enhance this
+module.
 
 =head1 AUTHOR
 
@@ -1382,6 +1392,6 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
- http://www.opensource.org/licenses/gpl-license.php
+L<http://www.opensource.org/licenses/gpl-license.php>
 
 =cut

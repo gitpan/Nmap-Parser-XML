@@ -1,7 +1,7 @@
-Nmap/Parser/XML version 0.69
+Nmap/Parser/XML version 0.70
 ============================
 
-nmap xml output parser in perl
+nmap output parser in perl
 
 This module is intended to sift through the nmap scan outputs in xml form,
 either by passing a filehandle that is being piped from a current nmap scan
@@ -16,9 +16,8 @@ can be done differently send your feedback.
 
 INSTALLATION
 
-The latest version can be found at:
-
-http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+Latest version: http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+Website:        http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/
 
 Download the file and unpack. This is usually done by:
 
@@ -45,26 +44,12 @@ not really need the executable, but the xml output that you will be parsing
 
 CHANGES
 
-Changes from 0.68 to 0.69
-	- new utility script : scan_host.pl
-	- added EXAMPLES seciton in documentation
-	- parses new 'version', 'extrainfo', and 'product'
-		att from service tag (3.40+)
-	- added *_service_version to *::Host
-	- added xml_version to *::ScanInfo
-	- more error prevention mechanisms
-	- added os_osfamily, os_gen, os_vendor, os_type added
-	- added OSINFO filter
-	- ::ScanInfo::scan_types does not return number of scan types in scalar
-		format. It will always return an array containing the scan
-		types.
-	- osfamily does not return the actual string (comma delimited), it '
-		always returns an array of os matches.
-	- DEPRECATED: tcpsequence, ipidsequence, tcptssequence
-		now use:
-		tcpsequence_class, tcpsequence_values, tcpsequence_index
-		ipidsequence_class, ipidsequence_values
-		tcptssequence_class, tcptssequence_values
+Changes from 0.69 to 0.70
+	- updated changes from 0.69
+	- updated documentation
+	- fixed documentation bug of all the example scripts
+	- updated examples script: they are more robust. Can either take
+		the example file as input, or actually run scans.
 
 FOR OTHER CHANGE INFORMATION SEE THE "CHANGES" FILE
 
