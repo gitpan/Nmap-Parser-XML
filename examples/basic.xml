@@ -36,9 +36,9 @@
 <addport state="open" portid="937" protocol="udp" owner=""/>
 <addport state="open" portid="111" protocol="udp" owner=""/>
 <ports><extraports state="closed" count="2038" />
-<port protocol="tcp" portid="22"><state state="filtered" /><service name="ssh" method="table" conf="3"  />
+<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" method="table" conf="3"  />
 </port>
-<port protocol="tcp" portid="25"><state state="filtered" /><service name="smtp" method="table" conf="3"  />
+<port protocol="tcp" portid="25"><state state="open" /><service name="smtp" method="table" conf="3"  />
 </port>
 <port protocol="tcp" portid="80"><state state="open" /><service name="http" method="table" conf="3"  />
 </port>

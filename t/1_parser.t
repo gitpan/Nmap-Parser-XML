@@ -6,7 +6,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 75;
+use Test::More tests => 76;
 use Nmap::Parser::XML;
 use constant FIRST => 0;
 use constant SECOND => 1;
@@ -45,7 +45,7 @@ is(scalar $p->get_host_list(),0,'Testing clean() against host list');
 sub nmap_parse_std_test {
 
 
-%test = (solaris => [qw(solaris sparc sunos)],
+%test = (solaris => [qw(solaris sparc sun)],
             linux => [qw(linux mandrake redhat slackware)],
             unix => [qw(unix hp-ux hpux bsd immunix aix)],
             win  => [qw(win microsoft)],
@@ -55,7 +55,7 @@ sub nmap_parse_std_test {
 
 #OSFAMILY LIST
 is_deeply($p->get_osfamily_list(),\%test, 'Testing default get_osfamily_list');
-%test = (solaris => [qw(solaris sparc sunos)],linux => [qw(linux mandrake redhat slackware)]);
+%test = (solaris => [qw(solaris sparc sun)],linux => [qw(linux mandrake redhat slackware)]);
 is_deeply($p->set_osfamily_list(\%test),\%test, 'Testing set_osfamily_list');
 is_deeply($p->get_osfamily_list(),\%test, 'Testing get_osfamily_list for premanence of structure');
 
@@ -137,8 +137,10 @@ ok(eq_set([$host->udp_ports()],[qw(937 111)]),'Testing udp ports found');
 
 %test = (service_name => 'rpcbind',service_proto => 'rpc',service_rpcnum => 100000);
 
-is_deeply($host->tcp_ports('111'),\%test,'Testing tcp_ports(port_number)');
-is_deeply($host->udp_ports('111'),\%test,'Testing udp_ports(port_number)');
+is($host->tcp_ports('22'),'filtered','Testing tcp_ports(port_number) filtered');
+is($host->udp_ports('111'),'open','Testing udp_ports(port_number) open');
+is($host->udp_ports('9999'),'closed','Testing udp_ports(port_number) closed');
+
 
 
 #TCP AND UDP SERVICE NAMES

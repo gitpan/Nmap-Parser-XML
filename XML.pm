@@ -12,7 +12,7 @@ use constant IGNORE_ADDPORT => 1;
 use constant IGNORE_EXTRAPORTS => 1;
 
 
-our $VERSION = '0.66';
+our $VERSION = '0.66_1';
 
 sub new {
 
@@ -39,7 +39,7 @@ $$self{twig}  = new XML::Twig(
 reset_filters();
 
 %OS_LIST = (
-	solaris => [qw(solaris sparc sunos)],
+	solaris => [qw(solaris sparc sun)],
 	linux 	=> [qw(linux mandrake redhat slackware)],
 	unix 	=> [qw(unix hp-ux hpux bsd immunix aix)],
 	win  	=> [qw(win microsoft)],
@@ -242,8 +242,9 @@ unless(defined $tmp){return undef;}
 for my $p (@list){
 my $proto = $p->{'att'}->{'protocol'};
 my $portid = $p->{'att'}->{'portid'};
-if(defined($proto && $portid)){$H{$addr}{ports}{$proto}{$portid} =
-				_service_hdlr($host,$addr,$p);}
+if(defined($proto && $portid)){$H{$addr}{ports}{$proto}{$portid} = _service_hdlr($host,$addr,$p);}
+my $state = $p->first_child('state');
+if(defined($state) && $state ne ''){$H{$addr}{ports}{$proto}{$portid}{'state'} = $state->{'att'}->{'state'};}
 
 }
 
@@ -421,10 +422,13 @@ sub hostnames {($_[1]) ? 	return @{$_[0]->{hostnames}}[ $_[1] - 1] :
 				return @{$_[0]->{hostnames}};}
 sub tcp_ports {
 
-if($_[1] =~ /\d+/){return $_[0]->{ports}{tcp}{$_[1]};}
-else {(wantarray) ? 	return (keys %{$_[0]->{ports}{tcp}}) :
-			return $_[0]->{ports}{tcp};
+if($_[1] =~ /\d+/){
+	if(exists ${$_[0]}{ports}{tcp}{$_[1]})
+	{return $_[0]->{ports}{tcp}{$_[1]}{state};}
+	elsif($Nmap::Parser::XML::F{portinfo} == 0) {return undef;}
+	else {return 'closed';}
 	}
+else {return (keys %{$_[0]->{ports}{tcp}});}
 
 }
 
@@ -432,10 +436,13 @@ sub tcp_ports_count {return scalar(keys %{$_[0]->{ports}{tcp}})}
 
 sub udp_ports {
 
-if($_[1] =~ /\d+/){return $_[0]->{ports}{udp}{$_[1]};}
-else {(wantarray) ? 	return (keys %{$_[0]->{ports}{udp}}) :
-			return $_[0]->{ports}{udp};
+if($_[1] =~ /\d+/){
+	if(exists ${$_[0]}{ports}{tcp}{$_[1]})
+	{return $_[0]->{ports}{tcp}{$_[1]}{state};}
+	elsif($Nmap::Parser::XML::F{portinfo} == 0) {return undef;}
+	else {return 'closed';}
 	}
+else { 	return (keys %{$_[0]->{ports}{udp}});}
 
 }
 
@@ -639,7 +646,7 @@ whole list, not append to it. Use C<get_osfamily_list()> first to get the curren
 listing.
 
   $npx->set_osfamily_list({
-  	solaris => [qw(solaris sparc sunos)],
+  	solaris => [qw(solaris sparc sun)],
         linux 	=> [qw(linux mandrake redhat slackware)],
         unix 	=> [qw(unix hp-ux hpux bsd immunix aix)],
         win  	=> [qw(win microsoft)],
@@ -958,55 +965,51 @@ particular slot. (order). The slot order starts at 1.
 
 =item B<tcp_ports([$port])>
 
-Returns an array containing the open tcp ports on the system. If $port is
-passed (which should be a specific port number), it then returns the hashref
-containing the information from that port. I<Note: You can also use
-tcp_service_name, tcp_service_proto, and tcp_service_rpcnum instead of working
-with the hashref>.
+Returns an array containing the active tcp ports on the system. If $port is
+passed (which should be a specific port number), it then returns the state of
+the given port. The value of the state can either be 'filtered' or 'open'. If
+the port number passed as an argument is not listed (internally), (which probably
+meant that nmap found this port to be closed or unreachable), it will return
+'closed' as the state. I<NOTE: If you used a parsing filter such as setting
+portinfo => 0, then all ports will return undef.>
 
  my @ports = $host_obj->tcp_ports; #list of ports
+ my $port = pop @ports;
 
- my $port_22 = $host_obj->tcp_ports(22); #hashref of ports and info
- $port_22->{service_name};  #example: sshd
- #     or
- $host_obj->tcp_service_name(22);
-
-I<Note that in previous version of the parser, no arguments would return the
-whole hashref of all the ports, this has changed and it is recommended you use
-the newly created functions tcp_service_* and udp_service_*.>
+ #Example if port 22
+ my $state = $host_obj->tcp_ports(22); #state of the port: filtered or open
+ $host_obj->tcp_service_name(22) if($state ne 'closed'); #example: sshd
 
 =item B<udp_ports([$port])>
 
-Returns an array containing the open udp ports on the system. If $port is
-passed (which should be a specific port number), it then returns the hashref
-containing the information from that port. I<Note: You can also use
-udp_service_name, udp_service_proto, and udp_service_rpcnum instead of working
-with the hashref>.
+Returns an array containing the active tcp ports on the system. If $port is
+passed (which should be a specific port number), it then returns the state of
+the given port. The value of the state can either be 'filtered' or 'open'. If
+the port number passed as an argument is not listed (internally), (which probably
+meant that nmap found this port to be closed or unreachable), it will return
+'closed' as the state. I<NOTE: If you used a parsing filter such as setting
+portinfo => 0, then all ports will return undef.>
 
  my @ports = $host_obj->udp_ports; #list of ports
-
- my $port_111 = $host_obj->udp_ports(111); #hashref of ports and info
- $port_111->{service_name};  #example: rpcbind
- $port_111->{service_proto}; #example: rpc (may not be defined)
- $port_111->{service_rpcnum};#example: 100000 (only if proto is rpc)
- #     or
- $host_obj->udp_service_name(111);
- $host_obj->udp_service_proto(111);
- $host_obj->udp_service_rpcnum(111);
-
-I<Note that in previous version of the parser, no arguments would return the
-whole hashref of all the ports, this has changed and it is recommended you use
-the newly created functions tcp_service_* and udp_service_*.>
+ my $port = pop @ports;
+ my $state = $host_obj->udp_ports($port); #returns the state of the port
+ if($state ne 'closed'){
+ $host_obj->udp_service_name($port);  #example: rpcbind
+ $host_obj->udp_service_proto($port); #example: rpc (may not be defined)
+ $host_obj->udp_service_rpcnum($port);#example: 100000 (only if proto is rpc)
+ }
 
 =item B<tcp_ports_count()>
 
-Returns the number of tcp ports found. This is a short-cut function to:
+Returns the number of tcp ports found. This is a short-cut function (but more
+efficient) to:
 
  scalar @{[$host->tcp_ports]} == $host->tcp_ports_count;
 
 =item B<udp_ports_count()>
 
-Returns the number of udp ports found. This is a short-cut function to:
+Returns the number of udp ports found. This is a short-cut function (but more
+efficient) to:
 
  scalar @{[$host->tcp_ports()]} == $host->tcp_ports_count;
 
@@ -1129,13 +1132,16 @@ Returns the time and date the given host was last rebooted.
 Much inspiration came from Max Schubert Nmap::Scanner module, which initially
 gave me motivation to develop this stand-alone parsing module. Lots of thanks!
 
+Thanks also to the people who have provided feedback to improve and enhance this
+module: http://search.cpan.org/author/APERSAUD/Nmap-Parser-XML/
+
 =head1 AUTHOR
 
 Anthony G Persaud <ironstar@iastate.edu>
 
 =head1 SEE ALSO
 
-nmap, L<XML::Twig>, L<Nmap::Scanner>
+nmap, L<XML::Twig>
 
   http://www.insecure.org/nmap/
   http://www.xmltwig.com
@@ -1145,6 +1151,7 @@ nmap, L<XML::Twig>, L<Nmap::Scanner>
 This program is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
-See http://www.perl.com/perl/misc/Artistic.html
+ See http://www.perl.com/perl/misc/Artistic.html
+
 
 =cut

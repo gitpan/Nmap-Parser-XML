@@ -36,7 +36,7 @@ $t1 = Time::HiRes::tv_interval($t1,[Time::HiRes::gettimeofday()]);
 is($p->get_scaninfo()->num_of_services(), '2046','Testing full tag');
 is($p->get_scaninfo()->nmap_version(), '3.27','Testing start tag');
 is($p->get_host(HOST1)->hostname, 'localhost.localdomain','Testing hostname tag');
-is( scalar @{[$p->get_host(HOST1)->tcp_ports()]},6,'Testing ports tag');
+isnt($p->get_host(HOST1)->tcp_ports('111'),undef,'Testing ports /w filters');
 #SET UP FOR FILTERS
 $p->clean();
 $p->parse_filters({portinfo => 0,scaninfo => 0,uptime => 0});
@@ -46,11 +46,12 @@ $t2 = [Time::HiRes::gettimeofday()];
 $p->parsefile($FH) for(0..COUNT);
 $t2 = Time::HiRes::tv_interval($t2,[Time::HiRes::gettimeofday()]);
 
-#TESTING OF INFORMATION
+#TESTING OF INFORMATION THAT SHOULD NOT EXIST
 is($p->get_scaninfo(),undef,'Testing start tag /w filters');
 is($p->get_scaninfo(),undef,'Testing full tag /w filters');
 is($p->get_host(HOST1)->hostname, 'localhost.localdomain','Testing hostname tag /w filters');
-is($p->get_host(HOST1)->tcp_ports(),undef,'Testing ports /w filters');
+is($p->get_host(HOST1)->tcp_ports('111'),undef,'Testing ports /w filters');
+
 SKIP:
 {
 skip 'No performance improvement from filters',1 if($t1 == $t2 || $t2 == 0 || $t1 == 0);

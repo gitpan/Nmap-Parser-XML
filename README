@@ -1,4 +1,4 @@
-Nmap/Parser/XML version 0.66
+Nmap/Parser/XML version 0.66_1
 ============================
 
 nmap xml output parser in perl
@@ -37,17 +37,19 @@ not really need the executable, but the xml output that you will be parsing
 CHANGES
 
 
-Changes from 0.64 to 0.66
-	- added short-cut function hostname() to return first hostname
-	- added preliminary callback functionality (for registering events)
-	- tcp_ports and udp_ports do not return hashref of all ports, only if
-		passed a port number as an argument.The argument must be a port
-		number.	They default to returning an array of port numbers.
-	- added short-cuts tcp_ports_count and udp_ports_count functions
-	- added tcp_service_proto and udp_service_proto
-	- added tcp_service_rpcnum and udp_service_rpcnum
-	- POD fixes.
-	- speed improvements
+
+Changes from 0.66 to 0.66_1
+        - previous versions (0.64 or earlier) of the parser, no arguments
+	to tcp_ports and udp_ports would return the whole hashref of all the
+	ports, this is now deprecated. Use the newly created functions
+	tcp_service_name, tcp_service_proto, tcp_service_rpcnum,
+	udp_service_name, udp_service_proto, and udp_service_rpcnum.
+	- passing a port number to tcp_ports and udp_ports returns the state
+	of the port.
+	- documentation changes
+	- changed default filter for solaris to include 'sun' and not 'sunos'
+	- more example scripts
+	- no more wantarray usage for tcp_ports and udp_ports
 
 FOR OTHER CHANGE INFORMATION SEE THE "CHANGES" FILE
 
