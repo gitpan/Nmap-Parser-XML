@@ -13,12 +13,23 @@
 #This program is distributed in the hope that it will be useful, but WITHOUT ANY
 #WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 #PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+# Changelog:
+# APS 01/29/2004: Changed run_nmap_scan to use parsescan().
+#		  $nmap_exe is set to default 'nmap' if find_exe returns empty
+#
+#
+#
+#
+#
+#
+
 
 
 use strict;
 use Nmap::Parser::XML;
 use constant TEST_FILE => 'example.xml';
-use constant CMD1 => 'nmap -sP -v -v -v -oX - ';
+use constant CMD1 => '-sP';
 use File::Spec;
 use Getopt::Long;
 use Pod::Usage;
@@ -37,7 +48,17 @@ GetOptions(
 if($G{helpme} || ($G{usefile} eq '' && scalar @ARGV == 0))
 	{pod2usage(-exitstatus => 0, -verbose => 1)}
 
-if($G{usefile} eq ''){$p = run_nmap_scan(@ARGV);}
+if($G{usefile} eq ''){
+
+
+my $cmd = join ' ', (CMD1, @ARGV);
+my $nmap_exe = find_exe('nmap');
+if($nmap_exe eq '')
+{warn "ERROR: nmap executable not found in \$PATH\n";$nmap_exe = 'nmap';}
+print 'Running: '.$nmap_exe.' '.$cmd."\n" if($G{verbose} > 0);
+
+$p->parsescan($nmap_exe,$cmd);
+	}
 else {
 	#use the input file
 	print 'Using InputFile: '.$G{usefile}."\n" if($G{verbose} > 0);
@@ -56,7 +77,6 @@ for my $ip ($p->get_host_list('down')){print "\t$ip\n";}
 
 
 sub find_exe {
-shift if(ref($_[0]) eq caller());
 
     my $exe_to_find = shift;
     $exe_to_find =~ s/\.exe//;
@@ -86,8 +106,8 @@ shift if(ref($_[0]) eq caller());
 
 
 sub run_nmap_scan {
-my @ips =  grep {/(?:\d+\.){3}\d+/} @_;
-my $NMAP;
+my @ips = @_;
+
 	my $cmd = join ' ', (CMD1, @ips);
 	my $nmap_exe = find_exe('nmap');
 	if($nmap_exe eq '')
@@ -95,9 +115,7 @@ my $NMAP;
 
 	print 'Running: '.$cmd."\n" if($G{verbose} > 0);
 
-	open $NMAP , "$cmd |" || die "ERROR: $!\n";
-	$p->parse($NMAP);
-	close $NMAP;
+	$p->parsescan($nmap_exe,$cmd);
 return $p;
 }
 
@@ -142,6 +160,36 @@ the script will be.
 
 =back 4
 
+=head1 TARGET SPECIFICATION
+
+This documentation was taken from the nmap man page. The IP address inputs
+to this scripts should be in the nmap target specification format.
+
+The  simplest  case is listing single hostnames or IP addresses onthe command
+line. If you want to scan a subnet of  IP addresses, you can append '/mask' to
+the hostname or IP address. mask must be between 0 (scan the whole internet) and
+ 32 (scan the single host specified). Use /24 to scan a class 'C' address and
+ /16 for a class 'B'.
+
+You can use a more powerful notation which lets you specify an IP address
+using lists/ranges for each element. Thus you can scan the whole class 'B'
+network 128.210.*.* by specifying '128.210.*.*' or '128.210.0-255.0-255' or
+even use the mask notation: '128.210.0.0/16'. These are all equivalent.
+If you use asterisks ('*'), remember that most shells require you to escape
+them with  back  slashes or protect them with quotes.
+
+Another interesting thing to do is slice the Internet the other way.
+
+Examples:
+
+ status_check.pl 127.0.0.1
+ status_check.pl target.example.com
+ status_check.pl target.example.com/24
+ status_check.pl 10.210.*.1-127
+ status_check.pl *.*.2.3-5
+ status_check.pl 10.[10-15].10.[2-254]
+
+
 =head1 OUTPUT EXAMPLE
 
 These are ONLY examples of how the output would look like.
@@ -167,10 +215,9 @@ These are ONLY examples of how the output would look like.
 
 L<Nmap::Parser::XML>
 
-The Nmap::Parser::XML page can be found at:
-L<http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/>. It contains
-the latest developments on the module. The nmap security scanner homepage can
-be found at: L<http://www.insecure.org/nmap/>.
+The Nmap::Parser::XML page can be found at: L<http://npx.sourceforge.net/>.
+It contains the latest developments on the module. The nmap security scanner
+homepage can be found at: L<http://www.insecure.org/nmap/>.
 
 =head1 AUTHOR
 

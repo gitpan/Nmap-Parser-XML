@@ -1,4 +1,4 @@
-Nmap/Parser/XML version 0.71
+Nmap/Parser/XML version 0.72
 ============================
 
 nmap output parser in perl
@@ -16,14 +16,15 @@ can be done differently send your feedback.
 
 INSTALLATION
 
-Latest version: http://search.cpan.org/~apersaud/Nmap-Parser-XML/
-Website:        http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/
+Latest version: http://sourceforge.net/projects/npx
+		http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+Website:        http://npx.sourceforge.net/
 
 Download the file and unpack. This is usually done by:
 
    tar xvf Nmap-Parser-XML-x.xx.tar.gz
 
-Next change into the newly created directory.
+Where x.xx is the version number. Next change into the newly created directory.
 To install this module type the following:
 
    perl Makefile.PL
@@ -35,7 +36,7 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-	XML::Twig 3.0+
+	XML::Twig 3.09+
 
 In addition, you will need nmap 3.00+. You don't exactly need it, but this
 version of nmap supports the xml output that this module can parse. So, you do
@@ -44,32 +45,15 @@ not really need the executable, but the xml output that you will be parsing
 
 CHANGES
 
-Changes from 0.68 to 0.71
-	- fixed a small bug in the installation under MSWin32 (PM_FILTER) which
-	caused all tests to fail. (It was removing things that weren't comments.
-	- updated documentation
-	- fixed documentation bug of all the example scripts
-	- updated examples script: they are more robust. Can either take
-		the example file as input, or actually run scans.
-	- new utility script : scan_host.pl
-	- added EXAMPLES seciton in documentation
-	- parses new 'version', 'extrainfo', and 'product'
-		att from service tag (3.40+)
-	- added *_service_version to *::Host
-	- added xml_version to *::ScanInfo
-	- more error prevention mechanisms
-	- added os_osfamily, os_gen, os_vendor, os_type added
-	- added OSINFO filter
-	- ::ScanInfo::scan_types does not return number of scan types in scalar
-		format. It will always return an array containing the scan
-		types.
-	- osfamily does not return the actual string (comma delimited), it always
-	returns an array of os matches.
-	- DEPRECATED: tcpsequence, ipidsequence, tcptssequence
-		now use:
-		tcpsequence_class, tcpsequence_values, tcpsequence_index
-		ipidsequence_class, ipidsequence_values
-		tcptssequence_class, tcptssequence_values
+Changes from 0.71 to 0.72
+	- removed IGNORE_ADDPORTS constant
+	- added contribution from Sebastian: nmap2csv.
+	- edited the links to the sourceforge project site.
+	- added parsescan() function to peroform quick nmap scans
+	and parsing.
+	- added more documentation
+	- fixed some example scripts
+	- added more tests for the new functionality
 
 FOR OTHER CHANGE INFORMATION SEE THE "CHANGES" FILE
 

@@ -1,7 +1,19 @@
 Revision history for Perl extension Nmap::Parser::XML.
 
-Latest version: http://search.cpan.org/~apersaud/Nmap-Parser-XML/
-Website:        http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/
+Latest version: http://sourceforge.net/projects/npx
+		http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+
+Website:        http://npx.sourceforge.net/
+
+Changes for 0.72
+	- removed IGNORE_ADDPORTS constant
+	- added contribution from Sebastian: nmap2csv.
+	- edited the links to the sourceforge project site.
+	- added parsescan() function to peroform quick nmap scans
+	and parsing.
+	- added more documentation
+	- fixed some example scripts
+	- added more tests for the new functionality
 
 Changes for 0.71
 	- fixed a small bug in the installation under MSWin32 (PM_FILTER) which

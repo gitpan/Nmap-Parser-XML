@@ -1,9 +1,9 @@
 Changes				Information about the changes
 examples/example.xml		Example xml file used by example scripts
 examples/nmap.dtd		Old standard for nmap xml
+examples/nmap2csv.pl		helps import information to spreadsheet program
 examples/nmap_std.xml
 examples/port_info.pl		Takes port info to a CSV file
-examples/port_info_out.csv	Comma-Delimited output of port_info.pl
 examples/scan_host.pl		Scans a set of hosts and retrieves information
 examples/status_check.pl	Checks the status of hosts
 LICENSE				GPL
@@ -15,5 +15,6 @@ t/0_api.t			Tests the API
 t/1_parser.t			Tests the parser
 t/2_callback.t			Test the callback methods
 t/3_efficiency.t		Test the efficiency of the parser with filters
+t/4_scanner.t			Test the running nmap scan functionality
 t/nmap_results.xml		Test file (large)
 XML.pm				Nmap::Parser::XML

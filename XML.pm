@@ -7,10 +7,9 @@ package Nmap::Parser::XML;
 use strict;
 require 5.004;
 use XML::Twig;
-use vars qw($S %H %OS_LIST %F $DEBUG %R);
-use constant IGNORE_ADDPORT 	=> 1;
+use vars qw($S %H %OS_LIST %F $DEBUG %R $NMAP_EXE);
 
-our $VERSION = '0.71';
+our $VERSION = '0.72';
 
 sub new {
 
@@ -27,7 +26,7 @@ $$self{twig}  = new XML::Twig(
 		host 	 => \&_host_hdlr,
 				},
 	ignore_elts 	=> {
-		addport 	=> IGNORE_ADDPORT,
+		addport 	=> 1,
 		}
 
 		);
@@ -52,6 +51,7 @@ return $self;
 ################################################################################
 ##			PRE-PARSE METHODS				      ##
 ################################################################################
+
 sub set_osfamily_list {
 my $self = shift;my $list = shift;
 %OS_LIST = %{$list};return \%OS_LIST;
@@ -66,7 +66,7 @@ my $state;
 grep {$F{lc($_)} = $filters->{$_} } keys %$filters;
 
 $$self{twig}->setIgnoreEltsHandlers({
-	'addport'	=> IGNORE_ADDPORT,
+	'addport'	=> 1,
 	'extraports'	=> ($F{extraports} ? undef : 1),
 	'ports' 	=> ($F{portinfo} ? undef : 1),
 	'tcpsequence' 	=> ($F{sequences} ? undef : 1),
@@ -96,7 +96,7 @@ sub reset_filters {
 
 
 $_[0]->{twig}->setIgnoreEltsHandlers({
-	addport 	=> IGNORE_ADDPORT,
+	addport 	=> 1,
 	}) if(ref($_[0]) eq __PACKAGE__);
 
 
@@ -122,6 +122,22 @@ sub reset_host_callback {$R{host_callback_ref} = $R{host_callback_register}=unde
 ################################################################################
 sub parse {%H =();$S = undef;shift->{twig}->parse(@_);}
 sub parsefile {%H=();$S = undef;shift->{twig}->parsefile(@_);}
+sub parsescan {
+my $self = shift;
+my $nmap = shift;
+my $args = shift; #get command for nmap scan
+my @ips = @_;
+
+my $FH;
+if($args =~ /-o(?:X|N|G)/){die "NPX: Cannot pass option '-oX', '-oN' or '-oG' to parscan()";}
+my $cmd = "$nmap $args -v -v -v -oX - ".(join ' ',@ips);
+open $FH, "$cmd |" || die "NPX: Could not perform nmap scan: $!";
+$self->parse($FH);
+close $FH;
+return $self;
+}
+
+
 
 #Safe parse and parsefile will return $@ which will contain the error
 #that occured if the parsing failed (it might be empty when no error occurred)
@@ -908,6 +924,28 @@ A die call is thrown if a parse error occurs. Otherwise it will return
 the twig built by the parse. Use 'safe_parse()' if you want the
 parsing to return even when an error occurs.
 
+=item B<parsescan($nmap_exe, $args , @ips)> I<Experimental>
+
+This method takes as arguments the path to  the nmap executable (it could just
+be 'nmap' too), nmap command line options and a list of IP addresses. It
+then runs an nmap scan that is piped directly into the Nmap::Parser::XML parser.
+This enables you to perform an nmap scan against a series of hosts and
+automatically have the Nmap::Parser::XML module parse it.
+
+ #Example:
+ my @ips = qw(127.0.0.1 10.1.1.1);
+ $nmap_exe = '/usr/bin/nmap';
+ $p->parsescan($nmap_exe,'-sT -p1-1023', @ips);
+ #   ... then do stuff with Nmap::Parser::XML object
+
+ my $host_obj = $p->get_host("127.0.0.1");
+ #   ... and so on and so forth ...
+
+I<Note: You cannot have one of the nmap options to be '-oX', '-oN' or 'oG'. Your
+program will die if you try and pass any of these options because it decides the
+type of output nmap will generate. The IP addresses can be nmap-formatted
+addresses (see nmap(1)>
+
 =item B<parsefile($filename [, opt =E<gt> opt_value [...]])>
 
 This method is inherited from XML::Parser. This is the same as parse() except
@@ -1295,11 +1333,11 @@ Returns the time and date the given host was last rebooted.
 These are a couple of examples to help you create custom security audit tools
 using some of the features of the Nmap::Parser::XML module.
 
-=head2 Piping to the parser directly
+=head2 Using ParseScan
 
-You can pipe the nmap output from the shell into the Nmap::Parser::XML object.
-The important detail to keep in mind is to remember to use the nmap switch:
-'-oX -' (without quotes) so that nmap pipes is XML output to STDOUT.
+You can run an nmap scan and have the parser parse the information automagically.
+The only thing is that you cannot use '-oX', '-oN', or '-oG' as one of your
+arguments for the nmap command line options passed to parsescan().
 
  use Nmap::Parser::XML;
 
@@ -1308,17 +1346,9 @@ The important detail to keep in mind is to remember to use the nmap switch:
 
  my @hosts = @ARGV; #Get hosts from stdin
 
- #Will construct a TCP-scan with OS detection
- #see nmap documentation for information on command-line switches
-
- my $cmd = 'nmap -sT -O -oX - '.join(' ',@hosts);
-
- #running command and piping it through $FH
- open $FH , "$cmd |" || die "Could not run nmpa scan: $!\n";
-
- $npx->parse($FH); #sending a filehandle ($FH) to the parser ($npx)
-
- close $FH; #close will wait until parse() gets all the input
+ #runs the nmap command with hosts and parses it at the same time
+ #do not use -oX, -oN or -oG as one of your arguments. It is not allowed here.
+ $npx->parsescan('nmap','-sS O -p 1-1023',@hosts);
 
  print "Active Hosts Scanned:\n";
  for my $ip ($npx->get_host_list('up')){print $ip."\n";}
@@ -1366,15 +1396,27 @@ callback function is called for every host that the parser encounters.
 
  nmap, L<XML::Twig>
 
-The Nmap::Parser::XML page can be found at:
-L<http://www.public.iastate.edu/~ironstar/Nmap-Parser-XML/>. It contains
-the latest developments on the module. The nmap security scanner homepage can
-be found at: L<http://www.insecure.org/nmap/>.
+The Nmap::Parser::XML page can be found at: L<http://npx.sourceforge.net/>.
+It contains the latest developments on the module. The nmap security scanner
+homepage can be found at: L<http://www.insecure.org/nmap/>. This project is also
+on sourceforge.net: L<http://sourceforge.net/projects/npx/>
+
+=begin html
+
+<img src="http://sourceforge.net/sflogo.php?group_id=97509&amp;type=5"
+ align='center' alt="SourceForge.net Logo" border="0" />
+<br>
+
+=end html
 
 =head1 ACKNOWLEDGEMENTS
 
 Thanks to everyone who have provided feedback to improve and enhance this
 module.
+
+Special Thanks to:
+
+Max Schubert, Sebastian Wolfgarten
 
 =head1 AUTHOR
 
