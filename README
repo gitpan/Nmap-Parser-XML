@@ -1,4 +1,4 @@
-Nmap/Parser/XML version 0.73
+Nmap/Parser/XML version 0.74
 ============================
 
 nmap output parser in perl
@@ -45,8 +45,29 @@ not really need the executable, but the xml output that you will be parsing
 
 CHANGES
 
-Changes from 0.71 to 0.73
-	- BugID 888187 is fixed : removed tests that require loopback addresses.
+Changes from 0.71 to 0.74
+	- fixed ip address input bug
+	- updated example scripts
+	- fixed nmap not found bug
+	- updated authorship informatin
+	- raised verbose level to 2 in example scripts (help pages)
+	- test script 4_scanner does not test. If nmap not installed
+		it skips all tests.
+	- updated tests
+	- some example scripts read IP addresses from file
+	- placed sourceforge image link on documentation
+	- status_check is now called sweep
+	- sweep.pl outputs active IP's to a file with a new command line switch
+	- scan_host.pl is renamed to scanhost.pl
+	- get_host_list,filter_by_osfamily, filter_by_status returns IP
+		addresses in sorted IP order. ( uses sort_ips() )
+	- sort_ips is a new function which will take a series of IPs and sort
+		them correctly by comparing each quad in the address to each
+		other.
+	- example scripts use --randomize_hosts to be more stealthy
+	- updated information on some example scripts because they require
+		nmap 3.50+ for the version scanning.
+	- updated parser tests, to check for sorted ip order
 	- removed safe_* functions and placed them in the actual parsing
 	functions. (I don't think they were never used.
 	- updated BUG REPORT information

@@ -4,7 +4,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 71;
+use Test::More tests => 72;
 use vars qw($host $p $FH $scaninfo @test %test $test);
 use_ok('Nmap::Parser::XML');
 no warnings;
@@ -21,7 +21,6 @@ proto_of_scan_type
 scan_types
 start_time
 xml_version
-
 );
 
 my @Host = qw(
@@ -68,6 +67,7 @@ udp_service_rpcnum
 udp_service_version
 uptime_lastboot
 uptime_seconds
+
 );
 
 my @Std = qw(
@@ -87,6 +87,7 @@ parsescan
 register_host_callback
 reset_host_callback
 set_osfamily_list
+sort_ips
 );
 
 

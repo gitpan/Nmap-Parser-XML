@@ -6,6 +6,8 @@
 #	all the ports that were scanned and found by nmap, their different
 #	states and services -- all in a comma delimited output
 #
+
+#
 #This program is free  software; you can redistribute  it and/or modify it under
 #the terms of the  GNU General Public License  as published by the Free Software
 #Foundation; either  version 2  of the  License, or  (at your  option) any later
@@ -24,120 +26,98 @@
 #
 use strict;
 use Nmap::Parser::XML;
-use constant TEST_FILE => 'example.xml';
-use constant OUT_FILE => 'port_info_out.csv';
+use Getopt::Long;
 use File::Spec;
 use Pod::Usage;
-use Getopt::Long;
 use vars qw(%G);
-use constant CMD1 => '-sV --randomize_hosts';
-use constant FAST_CMD => '-sV -F --randomize_hosts';
+use constant CMD1 => '-sV -O --randomize_hosts';
+use constant CMD2 => '-sV -O -F --randomize_hosts';
+use constant TEST_FILE => 'example.xml';
+
 Getopt::Long::Configure('bundling');
 
+
+my $p = new Nmap::Parser::XML;
+
+print "\nscan_host.pl - ( http://npx.sourceforge.net )\n",
+	('-'x50),"\n\n";
+
 GetOptions(
-		'help|h|?'	=> \$G{helpme},
+		'help|h|?'		=> \$G{helpme},
 		'F'		=> \$G{fast},
 		'v+'		=> \$G{verbose},
 		'i=s'		=> \$G{usefile},
-		'o=s'		=> \$G{output},
-		'L=s'		=> \$G{ipfile},
+		'L=s'		=> \$G{ipfile}
 ) or (pod2usage(-exitstatus => 0, -verbose => 2));
 
 if($G{helpme} || (!$G{usefile} && scalar @ARGV == 0 && !$G{ipfile}))
-	{pod2usage(-exitstatus => 0, -verbose => 2);}
+	{pod2usage(-exitstatus => 0, -verbose => 2)}
 
-print STDERR "FastScan enabled\n" if($G{verbose} > 0 && $G{fast});
-print "\nport_info.pl - ( http://npx.sourceforge.net )\n",
-	('-'x50),"\n\n";
+#Setup parser callback
+$p->register_host_callback(\&host_handler);
 
 
-my $OUT = $G{output} || OUT_FILE;
-my $p = new Nmap::Parser::XML;
 
-$p->parse_filters({
-	only_active => 1,
-	osinfo => 1,
-	scaninfo => 0,
-	sequences      => 0
-});
-
-if($G{usefile} eq ''){$p = run_nmap_scan(@ARGV);}
+#If using input file, then don't run nmap and use file
+if($G{usefile} eq ''){$p = run_nmap_scan(@ARGV);
+}
 else {
 	#use the input file
-	print 'Using InputFile: '.$G{usefile}."\n\n" if($G{verbose} > 0);
+	print 'Using InputFile: '.$G{usefile}."\n" if($G{verbose} > 0);
 	if(not -e $G{usefile})
 	{print STDERR "ERROR: File $G{usefile} does not exists!\n"; exit;}
 	$p->parsefile($G{usefile});
 	}
 
+#This host handler will get call for every host that is scanned (or found in the
+#xml file)
 
-#open your output file (comma delimited)
-open OUT, '>'.$OUT || die "Could not open output file: $OUT\n $!";
-#after parsing, get the host objects
-for my $host ($p->get_host_objects())
-{
-#treat $host as if it was a Nmap::Parser::XML::Host object
+sub host_handler {
+my $host = shift;
+print ' > '.$host->addr."\n";
+print "\t[+] Status: (".uc($host->status).")\n";
+if($host->status ne 'up'){goto END;}
+	tab_print("Hostname(s)",$host->hostnames());
+	tab_print("Operation System(s)",$host->os_matches());
+	port_service_print($host);
+END:
+print "\n\n";
+}
 
-	#you could do this for udp also
-	for my $port ($host->tcp_ports())
-	{
-	print OUT $host->addr().','.
-	          $port.','.
-	          $host->tcp_port_state($port).','.
-	           'tcp,'.
-	          $host->tcp_service_name($port).','.
-	          $host->tcp_service_product($port).','.
-	          $host->tcp_service_version($port).','.
-	          $host->tcp_service_extrainfo($port).','.
-	          $host->os_family()."\n";
-	print STDOUT $host->addr().','.
-	          $port.','.
-	          $host->tcp_port_state($port).','.
-	 	  'tcp,'.
-	          $host->tcp_service_name($port).','.
-	          $host->tcp_service_product($port).','.
-	          $host->tcp_service_version($port).','.
-	          $host->tcp_service_extrainfo($port).','.
-	          $host->os_family()."\n";
-	#you could, instead use os_class if available (available in Nmap::Parser::XML 0.64 and later
-	#or, you could use the os_family() function and set up your os list
+
+#Quick function to print witht tabs
+sub tab_print {print "\t[+] $_[0] :\n";shift;for my $a (@_){print "\t\t$a\n";}}
+
+sub port_service_print {
+	my $host = shift;
+	print "\t[+] TCP Ports :\n";
+	for my $port ($host->tcp_ports()){
+	printf("\t\t%-6s %-20s %s\n",
+			$port,
+			$host->tcp_service_name($port),
+			$host->tcp_service_product($port).' '.
+			$host->tcp_service_version($port));
 	}
 
-	for my $port ($host->udp_ports())
-	{ #now for UDP
-	print OUT $host->addr().','.
-	          $port.','.
-	          $host->udp_port_state($port).','.
-	          'udp,'.
-	          $host->udp_service_name($port).','.
-	          $host->udp_service_product($port).','.
-	          $host->udp_service_version($port).','.
-	          $host->udp_service_extrainfo($port).','.
-	          $host->os_family()."\n";
-	print STDOUT $host->addr().','.
-	          $port.','.
-	          $host->udp_port_state($port).','.
-	          'udp,'.
-	          $host->udp_service_name($port).','.
-	          $host->udp_service_product($port).','.
-	          $host->udp_service_version($port).','.
-	          $host->udp_service_extrainfo($port).','.
-	          $host->os_family()."\n";
-	#tcp_service_name(portnumber) returns the service name running on that TCP port
-	#you could, instead use os_class if available (available in Nmap::Parser::XML 0.64 and later
-	#or, you could use the os_family() function and set up your os list
+	print "\t[+] UDP Ports :\n" if($host->udp_ports_count);
+	for my $port ($host->udp_ports()){
+	printf("\t\t%-6s %-20s %s\n",
+			$port,
+			$host->udp_service_name($port),
+			$host->udp_service_product($port).' '.
+			$host->udp_service_version($port));
 	}
 
 }
-close OUT;
-print "\n\nOutput file generated: $OUT\n";
-exit;
+
 
 ################################################################################
 ##				Utility Functions			      ##
 ################################################################################
 
+#quick function to find an executable in a given path
 sub find_exe {
+
 
     my $exe_to_find = shift;
     $exe_to_find =~ s/\.exe//;
@@ -155,7 +135,6 @@ sub find_exe {
             next unless($file eq $exe_to_find);
 
             $path = File::Spec->catfile($dir,$file);
-            #  Should symbolic link be considered?  Helps me on cygwin but ...
             next unless -r $path && (-x _ || -l _);
 
             return $path;
@@ -165,10 +144,9 @@ sub find_exe {
 
 }
 
-
 sub run_nmap_scan {
-my @ips = @_;
-my($NMAP,$cmd);
+my @ips =  @_;
+my ($NMAP,$cmd);
 
 	if($G{ipfile} && -e $G{ipfile})
 		{push @ips ,read_ips_from_file($G{ipfile});
@@ -181,8 +159,8 @@ my($NMAP,$cmd);
 		{warn "WARNING: IP file $G{ipfile} does not exist!\n";}
 
 	if($G{fast}){
-
-	$cmd = join ' ', (FAST_CMD, @ips);
+	print "FastScan enabled\n" if($G{verbose} > 0 && $G{fast});
+	$cmd = join ' ', (CMD2, @ips);
 	} else {
 	$cmd = join ' ', (CMD1, @ips);
 	}
@@ -190,12 +168,13 @@ my($NMAP,$cmd);
 
 	my $nmap_exe = find_exe('nmap');
 	if($nmap_exe eq '')
-	{warn "ERROR: nmap executable not found in \$PATH\n";
-	$nmap_exe = 'nmap';}
+	{warn "ERROR: nmap executable not found in \$PATH\n";$nmap_exe = 'nmap';}
 
 	print 'Running: '.$nmap_exe.' '.$cmd."\n" if($G{verbose} > 0);
 
+
 	$p->parsescan($nmap_exe,$cmd);
+
 return $p;
 }
 
@@ -212,35 +191,35 @@ next unless length; # anything left?
 push @ips , $_; #it might be a host name too, so don't expect only numbers
 	}
 close FILE;
-
 return @ips;
 
 }
 
 __END__
-
 =pod
 
 =head1 NAME
 
-port_info - quickly scans multiple hosts to determine port information
+scan_host - a scanning script to gather port and OS information from hosts
 
 =head1 SYNOPSIS
 
- port_info.pl [OPTS] <IP_ADDR> [<IP.ADDR> ...]
+ scan_host.pl [OPTS] <IP_ADDR> [<IP.ADDR> ...]
 
 =head1 DESCRIPTION
 
 This script uses the nmap security scanner with the Nmap::Parser::XML module
-in order to run a quick PING sweep against specific hosts. It takes in a nmap
-xml file and outputs onto STDOUT and a file the all the ports that were scanned
-and found by nmap, their different states and services -- all in a comma
-delimited output. B<This script uses the -sV output to get version information
-of the services running on a machine. This requires nmap version 3.49+>
+in order to run quick scans against specific hosts, and gather all the
+information that is required to know about that specific host which nmap can
+figure out. This script can be used for quick audits against machines on the
+network and an educational use for learning how to write scripts using the
+Nmap::Parser::XML module. B<This script uses the -sV output to get version
+information of the services running on a machine. This requires nmap version
+3.49+>
 
 =head1 OPTIONS
 
-These options are passes as command line parameters.
+These options are passed as command line parameters.
 
 =over 4
 
@@ -262,11 +241,6 @@ Shows this help information.
 
 Reads IP addresses from filename.txt to run a scan against. The IP addresses
 should be in the target specification format explained below.
-
-=item B<-o outputfile.csv>
-
-Changes the output filename of the comma delimited file that is produced by
-the script.
 
 =item B<-v>
 
@@ -297,36 +271,42 @@ Another interesting thing to do is slice the Internet the other way.
 
 Examples:
 
- port_info.pl 127.0.0.1
- port_info.pl target.example.com
- port_info.pl target.example.com/24
- port_info.pl 10.210.*.1-127
- port_info.pl *.*.2.3-5
- port_info.pl 10.[10-15].10.[2-254]
+ scan_host.pl 127.0.0.1
+ scan_host.pl target.example.com
+ scan_host.pl target.example.com/24
+ scan_host.pl 10.210.*.1-127
+ scan_host.pl *.*.2.3-5
+ scan_host.pl 10.[10-15].10.[2-254]
+
 
 =head1 OUTPUT EXAMPLE
 
-These are ONLY examples of how the output would look like. It follows the
-conventions of:
+These are ONLY examples of how the output would look like.
 
- (IP, PORT_ID, STATE, PROTO, SERVICE, PRODUCT, VERSION, EXTRA, OS_FAMILIES)
+ Scan Host
+ --------------------------------------------------
+ [>] 127.0.0.1
+       [+] Status: (UP)
+       [+] Hostname(s) :
+               localhost.localdomain
+       [+] Operation System(s) :
+               Linux Kernel 2.4.0 - 2.5.20
+       [+] TCP Ports :
+               22     ssh                  OpenSSH 3.5p1
+               25     smtp
+               111    rpcbind
+               443    https
+               631    ipp
+       [+] UDP Ports :
+               111    rpcbind
+               937    unknown
 
-  127.0.0.1,22,filtered,tcp,ssh,OpenSSH,3.5p1,protocol 1.99,linux
-  127.0.0.1,25,filtered,tcp,smtp,Sendmail,8,,linux
-  127.0.0.1,111,open,udp,rpcbind,,,,linux
-  127.0.0.1,937,closed,udp,unknown,,,,linux
-  127.0.0.4,22,filtered,tcp,ssh,OpenSSH,3.5p1,protocol 1.99,
-  127.0.0.6,22,open,tcp,ssh,OpenSSH,3.5p1,protocol 1.99,solaris,switch
-  127.0.0.6,23,filtered,tcp,telnet,,,,solaris,switch
-  127.0.0.6,80,open,tcp,http,,,,solaris,switch
 
-The default output filename is: port_info_out.csv
 
 =head1 BUG REPORTS
 
 Please submit any bugs to:
 L<http://sourceforge.net/tracker/?group_id=97509&atid=618345>
-
 
 =head1 SEE ALSO
 

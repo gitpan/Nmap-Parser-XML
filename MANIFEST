@@ -4,8 +4,8 @@ examples/nmap.dtd		Old standard for nmap xml
 examples/nmap2csv.pl		helps import information to spreadsheet program
 examples/nmap_std.xml
 examples/port_info.pl		Takes port info to a CSV file
-examples/scan_host.pl		Scans a set of hosts and retrieves information
-examples/status_check.pl	Checks the status of hosts
+examples/scanhost.pl		Scans a set of hosts and retrieves information
+examples/sweep.pl		Checks the status of hosts
 LICENSE				GPL
 Makefile.PL
 MANIFEST			This list of files

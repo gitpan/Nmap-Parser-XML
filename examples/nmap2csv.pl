@@ -15,7 +15,7 @@
 # SW  22/12/2003: Project started including basic functions
 #                 (e.g. UDP/TCP scanning and converting to csv).
 # APS 10/01/2003: Added find_exe function because there was a problem under
-#		          different nmap executable locations. Added print statements
+#		  different nmap executable locations. Added print statements
 #                 and changed cmd for the nmap scans to work better (faster).
 #                 Took out the uid checking, since it causes problems running on
 #                 other OSs such as cygwin.
@@ -25,7 +25,7 @@
 
 use Getopt::Std;
 use Nmap::Parser::XML;
-our $VERSION  = '0.1';
+our $VERSION  = '0.2';
 
 ### How to use nmap2csv?
 

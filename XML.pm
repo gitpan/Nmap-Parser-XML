@@ -9,7 +9,7 @@ require 5.004;
 use XML::Twig;
 use vars qw($S %H %OS_LIST %F $DEBUG %R $NMAP_EXE);
 
-our $VERSION = '0.73';
+our $VERSION = '0.74';
 
 sub new {
 
@@ -160,9 +160,22 @@ sub clean {%H = ();$S = undef;$_[0]->{twig}->purge;return $_[0];}
 
 sub get_host_list {my $status = lc($_[1]);
 if($status eq 'up' || $status eq 'down')
-{return (grep {($H{$_}{status} eq $status)}(keys %H))};
-return (keys %H);
+{return (grep {($H{$_}{status} eq $status)}( sort_ips(keys %H) ))};
+return  sort_ips(keys %H);
 }
+
+sub sort_ips {
+if(ref($_[0]) eq __PACKAGE__){shift;}
+return (sort {
+	my @ipa = split('\.',$a);
+	my @ipb = split('\.',$b);
+		$ipa[0] <=> $ipb[0] ||
+		$ipa[1] <=> $ipb[1] ||
+		$ipa[2] <=> $ipb[2] ||
+		$ipa[3] <=> $ipb[3]
+	} @_);
+}
+
 sub get_host {shift if(ref($_[0]) eq __PACKAGE__);return $H{$_[0]};}
 sub del_host {shift if(ref($_[0]) eq __PACKAGE__);delete $H{$_[0]};}
 sub get_host_objects {return values (%H);}
@@ -179,7 +192,7 @@ for my $addr (keys %H)
 	{push @os_matched_ips, $addr;}
 
 }
-return @os_matched_ips;
+return sort_ips(@os_matched_ips);
 
 }
 
@@ -187,7 +200,7 @@ sub filter_by_status {
 my $self= shift;
 my $status = lc(shift);
 $status = 'up' if($status ne 'up' && $status ne 'down');
-return (grep {$H{$_}{status} eq $status} (keys %H));
+return (grep {$H{$_}{status} eq $status} (sort_ips(keys %H)) );
 }
 
 
@@ -1028,9 +1041,22 @@ $status can be either 'up' or 'down'. Default is 'up'.
 
 =item B<get_scaninfo()>
 
-Returns the the current Nmap::Parser::XML::ScanInfo.
+Returns the current Nmap::Parser::XML::ScanInfo.
 Methods can be called on this object to retrieve information
 about the parsed scan. See L<Nmap::Parser::XML::ScanInfo> below.
+
+=item B<sort_ips(@ips)>
+
+Given an array of IP addresses, it returns an array of IP addresses which is
+correctly sorted according to the network address. An example would be that
+10.99.99.99 would come before 10.100.99.99. It takes each quad from an IP
+address and compares it to corresponding quad number on the other IP address.
+(So 99 would come before 100).
+
+
+Methods can be called on this object to retrieve information
+about the parsed scan. See L<Nmap::Parser::XML::ScanInfo> below.
+
 
 =back
 
@@ -1314,7 +1340,6 @@ Returns the tcpsequence index information.
 
 Returns the ipidsequence class information
 
-
 =item B<ipidsequence_values()>
 
 Returns the ipidsequence values information
@@ -1401,7 +1426,7 @@ callback function is called for every host that the parser encounters.
 
  }
 
-=head1 BUG REPORTS
+=head1 BUG REPORTS AND SUPPORT
 
 Please submit any bugs to:
 L<http://sourceforge.net/tracker/?group_id=97509&atid=618345>
@@ -1440,5 +1465,13 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 L<http://www.opensource.org/licenses/gpl-license.php>
+
+=begin html
+
+<p>
+<a href="http://sourceforge.net/projects/npx"><img src="http://sourceforge.net/sflogo.php?group_id=97509&type=5" align='left' alt="SourceForge.net Logo" border="0" /></a>
+</p>
+
+=end html
 
 =cut

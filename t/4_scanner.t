@@ -14,12 +14,7 @@ use vars qw($t1 $t2);
 $|=1;
 
 my $p = new Nmap::Parser::XML;
-my $nmap_exe = find_nmap();
-
-SKIP: {
-skip 'Nmap executable could not be found on PATH!',2 unless($nmap_exe ne '');
-ok($nmap_exe, "Testing find_nmap()");
-}
+can_ok($p,'parsescan');
 
 
 sub find_nmap {

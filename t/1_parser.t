@@ -51,10 +51,10 @@ sub nmap_parse_test {ok($p->parsefile($FH),'Parsing from nmap data: $FH');}
 sub nmap_parse_end_test {
 ok($p->del_host(HOST2),'Testing del_host');
 ok(!$p->get_host(HOST2),'Testing for permanent deletion from call');
-ok(eq_set([$p->get_host_list('up')],[HOST1, HOST4, HOST5, HOST6]),'Testing for permanent deletion from list');
+is_deeply([$p->get_host_list('up')],[HOST1, HOST4, HOST5, HOST6],'Testing for permanent deletion from list');
 ok($p->clean(),'Testing clean() to clean memory');
 ok(!$p->get_scaninfo(),'Testing clean() against scaninfo');
-is(scalar $p->get_host_list(),0,'Testing clean() against host list');
+is(scalar $p->get_host_list(),undef,'Testing clean() against host list');
 
 }
 
@@ -80,18 +80,18 @@ is_deeply($p->set_osfamily_list(\%test),\%test, 'Testing set_osfamily_list');
 is_deeply($p->get_osfamily_list(),\%test, 'Testing get_osfamily_list for premanence of structure');
 
 #GET HOST LIST
-ok(eq_set([$p->get_host_list()],[HOST1, HOST2, HOST3, HOST4, HOST5, HOST6]), 'Testing get_host_list for correct hosts from file');
-ok(eq_set([$p->get_host_list('up')],[HOST1,HOST2, HOST4, HOST5, HOST6]), 'Testing get_host_list for correct hosts with status = up');
-ok(eq_set([$p->get_host_list('down')],[HOST3]), 'Testing get_host_list for correct hosts for with status = down');
+is_deeply([$p->get_host_list()],[HOST1, HOST2, HOST3, HOST4, HOST5, HOST6], 'Testing get_host_list for correct hosts from file');
+is_deeply([$p->get_host_list('up')],[HOST1,HOST2, HOST4, HOST5, HOST6], 'Testing get_host_list for correct hosts with status = up');
+is_deeply([$p->get_host_list('down')],[HOST3], 'Testing get_host_list for correct hosts for with status = down');
 
 #FILTER BY OSFAMILY
-ok(eq_set([$p->filter_by_osfamily('solaris')],[HOST2, HOST6]),'Testing single osfamily filter');
-ok(eq_set([$p->filter_by_osfamily('solaris','linux')],[HOST2,HOST1,HOST6]), 'Testing multiple osfamily filter');
+is_deeply([$p->filter_by_osfamily('solaris')],[HOST2, HOST6],'Testing single osfamily filter');
+is_deeply([$p->filter_by_osfamily('solaris','linux')],[HOST1,HOST2,HOST6], 'Testing multiple osfamily filter');
 
 #FILTER BY STATUS
-ok(eq_set([$p->filter_by_status('up')],[HOST1,HOST2, HOST4, HOST5, HOST6]),'Testing status filter - up');
-ok(eq_set([$p->filter_by_status('down')],[HOST3]),'Testing status filter - down');
-ok(eq_set([$p->filter_by_status()],[HOST1,HOST2, HOST4, HOST5, HOST6]),'Testing status filter - default');
+is_deeply([$p->filter_by_status('up')],[HOST1,HOST2, HOST4, HOST5, HOST6],'Testing status filter - up');
+is_deeply([$p->filter_by_status('down')],[HOST3],'Testing status filter - down');
+is_deeply([$p->filter_by_status()],[HOST1,HOST2, HOST4, HOST5, HOST6],'Testing status filter - default');
 
 @test = sort {$a->addr() cmp $b->addr()} $p->get_host_objects();
 is(scalar @test, 6,'Testing for number of host objects');
