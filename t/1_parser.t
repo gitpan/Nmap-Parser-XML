@@ -6,7 +6,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 64;
+use Test::More tests => 75;
 use Nmap::Parser::XML;
 use constant FIRST => 0;
 use constant SECOND => 1;
@@ -122,17 +122,35 @@ is($host->addr(), HOST1, 'Testing for correct address');
 is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
 
 #HOSTNAMES
+is($host->hostname(), 'localhost.localdomain','Testing basic hostname()');
 is($host->hostnames(), 1,'Testing for correct hostname count (void)');
 is($host->hostnames(1), 'localhost.localdomain','Testing for correct hostname (1)');
 
 #PORTS
-is(scalar @{[$host->tcp_ports()]} , 6, 'Testing for tcp_ports()');
-is(scalar @{[$host->udp_ports()]} , 2, 'Testing for udp_ports()');
+is(scalar @{[$host->tcp_ports()]} , 6, 'Testing for tcp_ports(6)');
+is(scalar @{[$host->udp_ports()]} , 2, 'Testing for udp_ports(2)');
+is($host->tcp_ports_count , 6, 'Testing for tcp_ports_count(6)');
+is($host->udp_ports_count , 2, 'Testing for udp_ports_count(2)');
+
+ok(eq_set([$host->tcp_ports()],[qw(25 22 631 443 111 80)]),'Testing tcp ports found');
+ok(eq_set([$host->udp_ports()],[qw(937 111)]),'Testing udp ports found');
+
+%test = (service_name => 'rpcbind',service_proto => 'rpc',service_rpcnum => 100000);
+
+is_deeply($host->tcp_ports('111'),\%test,'Testing tcp_ports(port_number)');
+is_deeply($host->udp_ports('111'),\%test,'Testing udp_ports(port_number)');
+
 
 #TCP AND UDP SERVICE NAMES
 is($host->tcp_service_name('22'), 'ssh','Testing tcp_service_name(22) = sshd');
 is($host->tcp_service_name('25'), 'smtp','Testing tcp_service_name(25) = smtp');
 is($host->udp_service_name('111'), 'rpcbind', 'Testing udp_service_name(111) = rpcbind');
+#TEST tcp_service_proto,udp_service_proto,tcp_service_rpcnum,udp_service_rpcnum
+is($host->tcp_service_proto('111'), 'rpc','Testing tcp_service_name(25) = smtp');
+
+is($host->udp_service_proto('111'), 'rpc', 'Testing udp_service_proto(111)');
+is($host->tcp_service_rpcnum('111'), 100000,'Testing tcp_service_rpcnum(111)');
+is($host->udp_service_rpcnum('111'), 100000, 'Testing udp_service_rpcnum(111)');
 
 #OS MATCHES
 is(scalar @{[$host->os_matches()]} , 1,'Testing os_matches()');

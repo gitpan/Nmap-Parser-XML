@@ -7,12 +7,12 @@ package Nmap::Parser::XML;
 use strict;
 require 5.004;
 use XML::Twig;
-use vars qw($S %H %OS_LIST %F $DEBUG);
+use vars qw($S %H %OS_LIST %F $DEBUG %R);
 use constant IGNORE_ADDPORT => 1;
 use constant IGNORE_EXTRAPORTS => 1;
 
 
-our $VERSION = '0.64';
+our $VERSION = '0.66';
 
 sub new {
 
@@ -104,6 +104,18 @@ return \%F;
 }
 
 
+sub register_host_callback {
+	my $self = shift;
+	$R{host_callback_ref} = shift;
+	if(ref($R{host_callback_ref}) eq 'CODE'){$R{host_callback_register} = 1;}
+	else {
+	die 'The callback parameter does not seem to be a code reference!';
+	$R{host_callback_register} = undef;}
+	return $R{host_callback_register};
+	}
+
+sub reset_host_callback {$R{host_callback_ref} = '';$R{host_callback_register}=undef;}
+
 ################################################################################
 ##			PARSE METHODS					      ##
 ################################################################################
@@ -159,7 +171,7 @@ sub get_scaninfo {return $S;}
 
 sub _scaninfo_hdlr {
 my ($twig,$scan) = @_;
-my ($type,$proto,$num) = ($scan->att('type'),$scan->att('protocol'),$scan->att('numservices'));
+my ($type,$proto,$num) = ($scan->{'att'}->{'type'},$scan->{'att'}->{'protocol'},$scan->{'att'}->{'numservices'});
 if(defined($type)){$S->{type}{$type} = $proto;$S->{numservices}{$type} = $num;}
 $twig->purge;}
 
@@ -167,16 +179,16 @@ $twig->purge;}
 sub _nmaprun_hdlr {#Last tag in an nmap output
 my ($twig,$host) = @_;
 unless($F{scaninfo}){return;}
-$S->{start_time} = $host->att('start');
-$S->{nmap_version} = $host->att('version');
-$S->{args} = $host->att('args');
+$S->{start_time} = $host->{'att'}->{'start'};
+$S->{nmap_version} = $host->{'att'}->{'version'};
+$S->{args} = $host->{'att'}->{'args'};
 $S = Nmap::Parser::XML::ScanInfo->new($S);
 
 $twig->purge;
 }
 
 
-sub _finished_hdlr {my ($twig,$host) = @_;$S->{finish_time} = $host->att('time');$twig->purge;}
+sub _finished_hdlr {my ($twig,$host) = @_;$S->{finish_time} = $host->{'att'}->{'time'};$twig->purge;}
 
 
 sub _host_hdlr {
@@ -185,23 +197,23 @@ my ($addr,$tmp);
     if(not defined($host)){return undef;}
     $tmp        = $host->first_child('address');         # get the element text
     if(not defined $tmp){return undef;}
-    $addr = $tmp->att('addr');
+    $addr = $tmp->{'att'}->{'addr'};
     if(!defined($addr) || $addr eq ''){return undef;}
     $H{$addr}{addr} = $addr;
-    $H{$addr}{addrtype} = $tmp->att('addrtype');
+    $H{$addr}{addrtype} = $tmp->{'att'}->{'addrtype'};
     $tmp = $host->first_child('hostnames');
     @{$H{$addr}{hostnames}} = _hostnames_hdlr($tmp,$addr) if(defined ($tmp = $host->first_child('hostnames')));
     $H{$addr}{status} = $host->first_child('status')->att('state');
     if($H{$addr}{status} eq 'down')
-    {$twig->purge;
-	if($F{only_active})
-	{delete $H{$addr};}
+    {	$twig->purge;
+	if($F{only_active}){delete $H{$addr};}
     	else { $H{$addr} = Nmap::Parser::XML::Host->new($H{$addr});}
-    	return;}
+    }
+    else {
 
-    $H{$addr}{ports} = _port_hdlr($host,$addr) if($F{portinfo});
-    $H{$addr}{os} = _os_hdlr($host,$addr);
-    $H{$addr}{uptime} = _uptime_hdlr($host,$addr) if($F{uptime});
+	    $H{$addr}{ports} = _port_hdlr($host,$addr) if($F{portinfo});
+	    $H{$addr}{os} = _os_hdlr($host,$addr);
+	    $H{$addr}{uptime} = _uptime_hdlr($host,$addr) if($F{uptime});
 
     	if($F{sequences})
 	{
@@ -210,7 +222,12 @@ my ($addr,$tmp);
 	    $H{$addr}{tcptssequence} = _tcptssequence($host,$addr);
 	}
 
-    $H{$addr} = Nmap::Parser::XML::Host->new($H{$addr});
+    	$H{$addr} = Nmap::Parser::XML::Host->new($H{$addr});
+    }
+
+    if($R{host_callback_register} == 1)
+    { &{$R{host_callback_ref}}($H{$addr}); delete $H{$addr};}
+
     $twig->purge;                                      # purges the twig
 
 }
@@ -223,8 +240,8 @@ $tmp = $host->first_child('ports');
 unless(defined $tmp){return undef;}
 @list= $tmp->children('port');
 for my $p (@list){
-my $proto = $p->att('protocol');
-my $portid = $p->att('portid');
+my $proto = $p->{'att'}->{'protocol'};
+my $portid = $p->{'att'}->{'portid'};
 if(defined($proto && $portid)){$H{$addr}{ports}{$proto}{$portid} =
 				_service_hdlr($host,$addr,$p);}
 
@@ -243,9 +260,9 @@ $tmp->{service_name} = 'unknown';
 
 if(defined $s){
 $tmp->{service_proto} = '';
-$tmp->{service_name} = $s->att('name');
-$tmp->{service_proto} = $s->att('proto') if($s->att('proto'));
-$tmp->{service_rpcnum} = $s->att('rpcnum') if($tmp->{service_proto} eq 'rpc');
+$tmp->{service_name} = $s->{'att'}->{'name'};
+$tmp->{service_proto} = $s->{'att'}->{'proto'} if($s->{'att'}->{'proto'});
+$tmp->{service_rpcnum} = $s->{'att'}->{'rpcnum'} if($tmp->{service_proto} eq 'rpc');
 }
 
 return $tmp;
@@ -258,19 +275,19 @@ my ($host,$addr) = (shift,shift);
 my ($tmp,@list);
 if(defined(my $os_list = $host->first_child('os'))){
     $tmp = $os_list->first_child("portused[\@state='open']");
-    $H{$addr}{os}{portused}{'open'} = $tmp->att('portid') if(defined $tmp);
+    $H{$addr}{os}{portused}{'open'} = $tmp->{'att'}->{'portid'} if(defined $tmp);
     $tmp = $os_list->first_child("portused[\@state='closed']");
-    $H{$addr}{os}{portused}{'closed'} = $tmp->att('portid') if(defined $tmp);
+    $H{$addr}{os}{portused}{'closed'} = $tmp->{'att'}->{'portid'} if(defined $tmp);
 
 
-    for my $o ($os_list->children('osmatch')){push @list, $o->att('name');  }
+    for my $o ($os_list->children('osmatch')){push @list, $o->{'att'}->{'name'};  }
     @{$H{$addr}{os}{names}} = @list;
 
     $H{$addr}{os}{osfamily_names} = _match_os(@list) if($F{osfamily});
 
     @list = ();
     for my $o ($os_list->children('osclass'))
-    {push @list, [$o->att('osfamily'),$o->att('osgen'),$o->att('vendor'),$o->att('type')];}
+    {push @list, [$o->{'att'}->{'osfamily'},$o->{'att'}->{'osgen'},$o->{'att'}->{'vendor'},$o->{'att'}->{'type'}];}
     @{$H{$addr}{os}{osclass}} = @list;
 
     }
@@ -285,8 +302,8 @@ my ($host,$addr) = (shift,shift);
 my $uptime = $host->first_child('uptime');
 my $hash;
 if(defined $uptime){
-	$hash->{seconds} = $uptime->att('seconds');
-	$hash->{lastboot} = $uptime->att('lastboot');
+	$hash->{seconds} = $uptime->{'att'}->{'seconds'};
+	$hash->{lastboot} = $uptime->{'att'}->{'lastboot'};
 }
 return $hash;
 }
@@ -297,7 +314,7 @@ shift if(ref($_[0]) eq __PACKAGE__);
 my $hostnames = shift;
 my $addr = shift;
 my @names;
-for my $n ($hostnames->children('hostname')) {push @names, $n->att('name');}
+for my $n ($hostnames->children('hostname')) {push @names, $n->{'att'}->{'name'};}
 return @names if(wantarray);
 return \@names;
 
@@ -309,7 +326,7 @@ my $temp;
 my $seq = $host->first_child('tcpsequence');
 unless($seq){return undef;}
 
-return [$seq->att('class'),$seq->att('values'),$seq->att('index')];
+return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'},$seq->{'att'}->{'index'}];
 
 }
 
@@ -318,7 +335,7 @@ my ($host,$addr) = (shift,shift);
 my $temp;
 my $seq = $host->first_child('ipidsequence');
 unless($seq){return undef;}
-return [$seq->att('class'),$seq->att('values')];
+return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'}];
 
 }
 
@@ -328,7 +345,7 @@ my ($host,$addr) = (shift,shift);
 my $temp;
 my $seq = $host->first_child('tcptssequence');
 unless($seq){return undef;}
-return [$seq->att('class'),$seq->att('values')];
+return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'}];
 }
 
 sub _match_os {
@@ -399,14 +416,40 @@ return $self;
 sub status {return $_[0]->{status};}
 sub addr {return $_[0]->{addr};}
 sub addrtype {return $_[0]->{addrtype};}
+sub hostname  { return ${$_[0]->{hostnames}}[0];   } #returns the first hostname
 sub hostnames {($_[1]) ? 	return @{$_[0]->{hostnames}}[ $_[1] - 1] :
 				return @{$_[0]->{hostnames}};}
-sub tcp_ports {(wantarray) ? 	return (keys %{$_[0]->{ports}{tcp}}) :
-				return $_[0]->{ports}{tcp};}
-sub udp_ports {(wantarray) ? 	return (keys %{$_[0]->{ports}{udp}}) :
-				return $_[0]->{ports}{udp};}
+sub tcp_ports {
+
+if($_[1] =~ /\d+/){return $_[0]->{ports}{tcp}{$_[1]};}
+else {(wantarray) ? 	return (keys %{$_[0]->{ports}{tcp}}) :
+			return $_[0]->{ports}{tcp};
+	}
+
+}
+
+sub tcp_ports_count {return scalar(keys %{$_[0]->{ports}{tcp}})}
+
+sub udp_ports {
+
+if($_[1] =~ /\d+/){return $_[0]->{ports}{udp}{$_[1]};}
+else {(wantarray) ? 	return (keys %{$_[0]->{ports}{udp}}) :
+			return $_[0]->{ports}{udp};
+	}
+
+}
+
+sub udp_ports_count {return scalar(keys %{$_[0]->{ports}{udp}})}
+
 sub tcp_service_name {return $_[0]->{ports}{tcp}{$_[1]}{service_name};}
 sub udp_service_name {return $_[0]->{ports}{udp}{$_[1]}{service_name};}
+
+sub tcp_service_proto {return $_[0]->{ports}{tcp}{$_[1]}{service_proto};}
+sub udp_service_proto {return $_[0]->{ports}{udp}{$_[1]}{service_proto};}
+
+sub tcp_service_rpcnum {return $_[0]->{ports}{tcp}{$_[1]}{service_rpcnum};}
+sub udp_service_rpcnum {return $_[0]->{ports}{udp}{$_[1]}{service_rpcnum};}
+
 sub os_matches {($_[1]) ? 	return @{$_[0]->{os}{names}}[ $_[1] - 1 ] :
 				return (@{$_[0]->{os}{names}});}
 sub os_port_used {
@@ -447,13 +490,14 @@ Nmap::Parser::XML - nmap parser for xml scan data using perl.
   use Nmap::Parser::XML;
 
  	#PARSING
-  my $p = new Nmap::Parser::XML;
-  $p->parse($fh); #filehandle or nmap xml output string
-  #or $p->parsefile('nmap_output.xml') for files
+  my $npx = new Nmap::Parser::XML;
+  $npx->parse($fh); #filehandle or nmap xml output string
+  #or $npx->parsefile('nmap_output.xml') for files
 
  	#GETTING SCAN INFORMATION
+
   print "Scan Information:\n";
-  $si = $p->get_scaninfo();
+  $si = $npx->get_scaninfo();
   #Now I can get scan information by calling methods
   print
   'Number of services scanned: '.$si->num_of_services()."\n",
@@ -461,33 +505,26 @@ Nmap::Parser::XML - nmap parser for xml scan data using perl.
   'Scan Types: ',(join ' ',$si->scan_types())."\n";
 
  	#GETTING HOST INFORMATION
+
    print "Hosts scanned:\n";
-   for my $ip ($p->get_host_list()){
-   $host_obj = Nmap::Parser::XML->get_host($ip);
+   for my $host_obj ($npx->get_host_objects()){
    print
-  'Hostname: '.($host_obj->hostnames())[0],"\n",
+  'Hostname: '.($host_obj->hostname),"\n",
   'Address: '.$host_obj->addr()."\n",
   'OS matches: '.(join ',', $host_obj->os_matches())."\n",
-  'Last Reboot: '.($host_obj->uptime_lastboot,"\n";
   	#... you get the idea...
    }
 
-  print "\n\nUnix Flavor Machines:\n";
-  for ($p->filter_by_osfamily('linux','solaris','unix')){print;}
-
-  print "\n\nAnd for those who like Windows:\n";
-  for ($p->filter_by_osfamily('win')){print;}
-
   $p->clean(); #frees memory
-
+  # ... do other stuff if you want ...
 
 =head1 DESCRIPTION
 
 This is an stand-alone output parser for nmap XML reports. This uses the XML::Twig library
-which is fast and memory efficient. This module does not do a nmap scan 
+which is fast and memory efficient. This module does not do a nmap scan
 (See Nmap::Scanner for that functionality). It either can parse a nmap xml file,
 or it can take a filehandle that is piped from a current nmap running scan using '-oX -'
-switch.This module, in the authors opinion, is easier to use for basic information 
+switch.This module, in the authors opinion, is easier to use for basic information
 gathering of hosts.
 
 This module is meant to be a balance of easy of use and efficiency. (more ease
@@ -496,9 +533,11 @@ library in order to incrase parsing speed and save on memory usage. If you need
 more information from an nmap xml-output that is not available in the release,
 please send your request. (see below).
 
-=head3 OVERVIEW
+=head2 OVERVIEW
 
 Using this module is very simple. (hopefully).
+
+=over 4
 
 =item I<Set your Options>
 
@@ -510,69 +549,71 @@ set also. (See Pre-Parse methods)
 Example, if you only want to retain the information of the hosts that nmap
 found to be up (active), then set the filter:
 
- $obj->parse_filters({only_active => 1});
+ $npx->parse_filters({only_active => 1});
 
 Usually you won't have much information about hosts that are down from nmap
 anyways.
 
 =item I<Run the parser>
 
-Parse the info. You use $obj->parse() or $obj->parsefile(), to parse the nmap xml
+Parse the info. You use $npx->parse() or $npx->parsefile(), to parse the nmap xml
 information. This information is parsed and constructed internally.
 
 =item I<Get the Scan Info>
 
-Use the $si = $obj->get_scaninfo() to obtain the
+Use the $si = $npx->get_scaninfo() to obtain the
 Nmap::Parser::XML::ScanInfo object. Then you can call any of the
 ScanInfo methods on this object to retrieve the information. See
 Nmap::Parser::XML::ScanInfo below.
 
 =item I<Get the Host Info>
 
-Use the $obj->get_host($addr) to obtain the Nmap::Parser::XML::Host object of the
+Use the $npx->get_host($addr) to obtain the Nmap::Parser::XML::Host object of the
 current address. Using this object you can call any methods in the Host object
 to retrieve the information that nmap obtained from this scan.
 
- $obj->get_host($ip_addr);
+ $npx->get_host($ip_addr);
 
 You can use any of the other methods to filter or obtain
 different lists.
 
  	#returns all ip addresses that were scanned
- $obj->get_host_list()
+ $npx->get_host_list()
 
  	#returns all ip addresses that have osfamily = $os
- $obj->filter_by_osfamily($os)
+ $npx->filter_by_osfamily($os)
 	 #See get_os_list() and set_os_list()
 	 #etc. (see other methods)
 
 	#returns all host objects from the information parsed.
 	#All are Nmap::Parser::XML::Host objects
- $obj->get_host_objects()
+ $npx->get_host_objects()
 
 
 =item I<Clean up>
 
 This is semi-optional. When files are not that long, this is optional.
 If you are in a situation with memory constraints and are dealing with large
-nmap xml-output files, this little effort helps. After you are done with everything, you should do a $obj->clean()
+nmap xml-output files, this little effort helps. After you are done with everything, you should do a $npx->clean()
 to free up the memory used by maintaining the scan and hosts information
 from the scan. A much more efficient way to do is, once you are done using a
 host object, delete it.
 
  		#Getting all IP addresses parsed
- for my $host ($obj->get_host_list())
+ for my $host ($npx->get_host_list())
  	{	#Getting the host object for that address
-	my $h = $obj->get_host($host);
+	my $h = $npx->get_host($host);
 		#Calling methods on that object
 	print "Addr: $host  OS: ".(join ',',$h->os_matches())."\n";
-	$obj->del_host($host); #frees memory
+	$npx->del_host($host); #frees memory
 	}
 
-	#Or when you are done with everything use $obj->clean()
-Or you could skip the $obj->del_host(), and after you are done, perform a
-$obj->clean() which resets all the internal trees. Of course there are much
+	#Or when you are done with everything use $npx->clean()
+Or you could skip the $npx->del_host(), and after you are done, perform a
+$npx->clean() which resets all the internal trees. Of course there are much
 better ways to clean-up (using perl idioms).
+
+=back
 
 =head1 METHODS
 
@@ -583,7 +624,10 @@ better ways to clean-up (using perl idioms).
 =item B<new()>
 
 Creates a new Nmap::Parser::XML object with default handlers and default
-osfamily list.
+osfamily list. In this document the current Nmap::Parser::XML object will be
+referred as B<$npx>.
+
+ my $npx = new Nmap::Parser::XML; #NPX = Nmap Parser XML for those curious
 
 =item B<set_osfamily_list($hashref)>
 
@@ -594,7 +638,7 @@ keyword list. Shown here is the default. Calling this method will overwrite the
 whole list, not append to it. Use C<get_osfamily_list()> first to get the current
 listing.
 
-  $obj->set_osfamily_list({
+  $npx->set_osfamily_list({
   	solaris => [qw(solaris sparc sunos)],
         linux 	=> [qw(linux mandrake redhat slackware)],
         unix 	=> [qw(unix hp-ux hpux bsd immunix aix)],
@@ -623,7 +667,7 @@ This function takes a hash reference that will set the corresponding filters
 when parsing the xml information. All filter names passed will be treated
 as case-insensitive.
 
- $obj->parse_filters({
+ $npx->parse_filters({
  	osfamily 	=> 1, #same as any variation. Ex: osfaMiLy
  	only_active	=> 0   #same here
  		});
@@ -631,7 +675,7 @@ as case-insensitive.
 =item I<OSFAMILY>
 
 If set to true, (the default), it will match the OS guessed by nmap with a
-osfamily name that is given in the OS list. See L<set_osfamily_list()>. If
+osfamily name that is given in the OS list. See set_osfamily_list(). If
 false, it will disable this matching (a bit of speed up in parsing).
 
 =item I<ONLY_ACTIVE>
@@ -676,7 +720,35 @@ Resets the value of the filters to the default values:
  scaninfo	=> 1
  uptime		=> 1
 
-=back 4
+
+=item B<register_host_callback>
+I<Experimental - interface might change in future releases>
+
+Sets a callback function, (which will be called) whenever a host is found. The
+callback defined will receive as arguments the current Nmap::Parser::XML::Host
+that was just parsed. After the callback returns (back to Nmap::Parser::XML to
+keep on parsing other hosts), that current host will be deleted (so you don't
+have to delete it yourself). This saves a lot of memory since after you perform
+the actions you wish to perform on the Nmap::Parser::XML::Host object you currently
+have, it gets deleted from the tree.
+
+ $npx->register_host_callback(\&host_handler);
+
+ sub host_handler {
+ my $host_obj = shift; #an instance of Nmap::Parser::XML::Host (for current)
+
+ ... do stuff with $host_obj ... (see Nmap::Parser::XML::Host doc)
+
+ return; # $host_obj will be deleted (similar to del_host()) method
+
+ }
+
+=item B<reset_host_callback>
+I<Experimental - interface might change in future releases>
+
+Resets the host callback function, and does normal parsing.
+
+=back
 
 =head2 Parse Methods
 
@@ -719,7 +791,6 @@ object also contains the parsed twig). $@ contains the error message on failure.
 Note that the parsing still stops as soon as an error is detected,
 there is no way to keep going after an error.
 
-
 =item B<safe_parsefile($source [, opt =E<gt> opt_value [...]])>
 
 Same as XML::Twig::safe_parsefile().
@@ -737,7 +808,7 @@ there is no way to keep going after an error.
 Frees up memory by cleaning the current tree hashes and purging the current
 information in the XML::Twig object. Returns the Nmap::Parser::XML object.
 
-=back 4
+=back
 
 =head2 Post-Parse Methods
 
@@ -784,8 +855,7 @@ Returns the the current Nmap::Parser::XML::ScanInfo.
 Methods can be called on this object to retrieve information
 about the parsed scan. See L<Nmap::Parser::XML::ScanInfo> below.
 
-=back 4
-
+=back
 
 =head2 Nmap::Parser::XML::ScanInfo
 
@@ -793,14 +863,13 @@ The scaninfo object. This package contains methods to easily access
 all the parameters and values of the Nmap scan information ran by the
 currently parsed xml file or filehandle.
 
- $si = $obj->get_scaninfo();
+ $si = $npx->get_scaninfo();
  print 	'Nmap Version: '.$si->nmap_version()."\n",
  	'Num of Scan Types: '.(join ',', $si->scan_types() )."\n",
  	'Total time: '.($si->finish_time() - $si->start_time()).' seconds';
  	#... you get the idea...
 
 =over 4
-
 
 =item B<num_of_services([$scan_type])>;
 
@@ -835,8 +904,7 @@ that were selected.
 
 Returns the protocol of the specific scan type.
 
-=back 4
-
+=back
 
 =head2 Nmap::Parser::XML::Host
 
@@ -857,7 +925,6 @@ TCP Sequences), let me know.
 
 =over 4
 
-
 =item B<status()>
 
 Returns the status of the host system. Either 'up' or 'down'
@@ -871,6 +938,13 @@ Returns the IP address of the system
 Returns the address type of the IP address returned
 by addr(). Ex. 'ipv4'
 
+=item B<hostname()>
+
+Returns the first hostname found of the current host object. This is a short-cut
+to using hostnames(1).
+
+ $host_obj->hostname() eq $host_obj->hostnames(1) #Always true
+
 =item B<hostnames($number)>
 
 If $number is omitted (or false), returns an array containing all of
@@ -882,17 +956,59 @@ particular slot. (order). The slot order starts at 1.
  $host_obj->hostnames(1); #returns the 1st hostname found
  $host_obj->hostnames(4); #returns the 4th. (you get the idea..)
 
-=item B<tcp_ports()>
+=item B<tcp_ports([$port])>
 
-In a list context, returns an array containing
-the open tcp ports on the system. In a scalar
-context, a hash reference of the tree branch is returned.
+Returns an array containing the open tcp ports on the system. If $port is
+passed (which should be a specific port number), it then returns the hashref
+containing the information from that port. I<Note: You can also use
+tcp_service_name, tcp_service_proto, and tcp_service_rpcnum instead of working
+with the hashref>.
 
-=item B<udp_ports()>
+ my @ports = $host_obj->tcp_ports; #list of ports
 
-In a list context, returns an array containing
-the open udp ports on the system. In a scalar
-context, a hash reference of the tree branch is returned.
+ my $port_22 = $host_obj->tcp_ports(22); #hashref of ports and info
+ $port_22->{service_name};  #example: sshd
+ #     or
+ $host_obj->tcp_service_name(22);
+
+I<Note that in previous version of the parser, no arguments would return the
+whole hashref of all the ports, this has changed and it is recommended you use
+the newly created functions tcp_service_* and udp_service_*.>
+
+=item B<udp_ports([$port])>
+
+Returns an array containing the open udp ports on the system. If $port is
+passed (which should be a specific port number), it then returns the hashref
+containing the information from that port. I<Note: You can also use
+udp_service_name, udp_service_proto, and udp_service_rpcnum instead of working
+with the hashref>.
+
+ my @ports = $host_obj->udp_ports; #list of ports
+
+ my $port_111 = $host_obj->udp_ports(111); #hashref of ports and info
+ $port_111->{service_name};  #example: rpcbind
+ $port_111->{service_proto}; #example: rpc (may not be defined)
+ $port_111->{service_rpcnum};#example: 100000 (only if proto is rpc)
+ #     or
+ $host_obj->udp_service_name(111);
+ $host_obj->udp_service_proto(111);
+ $host_obj->udp_service_rpcnum(111);
+
+I<Note that in previous version of the parser, no arguments would return the
+whole hashref of all the ports, this has changed and it is recommended you use
+the newly created functions tcp_service_* and udp_service_*.>
+
+=item B<tcp_ports_count()>
+
+Returns the number of tcp ports found. This is a short-cut function to:
+
+ scalar @{[$host->tcp_ports]} == $host->tcp_ports_count;
+
+=item B<udp_ports_count()>
+
+Returns the number of udp ports found. This is a short-cut function to:
+
+ scalar @{[$host->tcp_ports()]} == $host->tcp_ports_count;
 
 =item B<tcp_service_name($port)>
 
@@ -903,6 +1019,26 @@ given tcp $port. (if any)
 
 Returns the name of the service running on the
 given udp $port. (if any)
+
+=item B<tcp_service_proto($port)>
+
+Returns the protocol type of the given port. This can be tcp, udp, or rpc as
+given by nmap.
+
+=item B<udp_service_proto($port)>
+
+Returns the protocol type of the given port. This can be tcp, udp, or rpc as
+given by nmap.
+
+=item B<tcp_service_rpcnum($port)>
+
+Returns the rpc number of the service on the given port. I<This value only
+exists if the protocol on the given port was found to be RPC by nmap.>
+
+=item B<udp_service_rpcnum($port)>
+
+Returns the rpc number of the service on the given port. I<This value only
+exists if the protocol on the given port was found to be RPC by nmap.>
 
 =item B<os_matches([$number])>
 
@@ -986,7 +1122,7 @@ Returns the number of seconds the host has been up (since boot).
 
 Returns the time and date the given host was last rebooted.
 
-=back 4
+=back
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -999,7 +1135,7 @@ Anthony G Persaud <ironstar@iastate.edu>
 
 =head1 SEE ALSO
 
-L<nmap(1)>, L<XML::Twig(3)>, L<Nmap::Scanner(3)>
+nmap, L<XML::Twig>, L<Nmap::Scanner>
 
   http://www.insecure.org/nmap/
   http://www.xmltwig.com

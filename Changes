@@ -1,7 +1,18 @@
 Revision history for Perl extension Nmap::Parser::XML.
 
-TODO:
-	Add register function calls
+
+Changes for 0.66
+	- added short-cut function hostname() to return first hostname
+	- added preliminary callback functionality (for registering events).
+		This includes register_host_callback, and reset_host_callback
+	- tcp_ports and udp_ports do not return hashref of all ports, only if
+		passed a port number as an argument.The argument must be a port
+		number.	They default to returning an array of port numbers.
+	- added short-cuts tcp_ports_count and udp_ports_count functions
+	- added tcp_service_proto and udp_service_proto
+	- added tcp_service_rpcnum and udp_service_rpcnum
+	- POD fixes.
+	- speed improvements
 
 Changes for 0.64
 	- nmaprun filter bug fixed

@@ -1,22 +1,29 @@
 use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
-my %depend = (XML::Parser => 2.3,
+
+my %depends = (XML::Parser => 2.23,
               XML::Twig   => 3.09
               );
 
-for my $mod (keys %depend){
-eval 'require '.$mod;
+print "Checking for dependencies...\n\n";
+for my $mod (sort keys %depends)
+{
+eval "require ".$mod;
+if($@){print "[-] $mod NOT INSTALLED! -- please install\n";$error = 1;next;}
+my $version =  eval eval '$'.$mod."::VERSION";
 
-if($@){print "-- ".$mod." needs to be installed!\n";}
-else {printf("%-15s : v%.2f \n",$mod,(eval eval '$'.$mod.'::VERSION'));   }
+if($version < $depends{$mod}){print "[-] $mod version problem: cur $version < req $depends{$mod}.\n\tPlease update to $depends{$mod}\n";$error = 1;}
+else {printf("%-15s : v%.2f\n",$mod,$version);}
+
 }
+
 
 WriteMakefile(
     'NAME'		=> 'Nmap::Parser::XML',
     'VERSION_FROM'	=> 'XML.pm', # finds $VERSION
     'PREREQ_PM'		=> \%depend,
-    'ABSTRACT'		=> 'Nmap parser for xml-scan output files',
+    'ABSTRACT'		=> 'nmap xml output parser in perl',
     'AUTHOR'	       => 'Anthony G Persaud <ironstar@iastate.edu>'
 	);
 

@@ -1,13 +1,13 @@
-<!-- 
+<!--
      nmap.dtd
      This is the DTD for nmap's XML output (-oX) format.
      Tested against nmap-2.54BETA29
      $Id: nmap.dtd,v 1.2 2001/10/12 20:29:45 wam Exp $
 
-     William McVey 
+     William McVey
      <wam@cisco.com>
      <wam+nmap@wamber.net>
-     
+
      Until officially adopted as a part of the nmap distribution, the latest
      version of this DTD can be found linked off:
      http://www.networkexploits.com/projects/nmap/
@@ -28,11 +28,11 @@
 
      Since the work to write this DTD was done as part of my
      job duties for the Cisco Secure Consulting Services group
-     (http://www.cisco.com/go/securityconsulting), the following copyright 
+     (http://www.cisco.com/go/securityconsulting), the following copyright
      needs to be included in this and any other derived works.
 
 #   Copyright (c) 2001 by Cisco systems, Inc.
-# 
+#
 #   Permission to use, copy, modify, and distribute modified and
 #   unmodified copies of this software for any purpose and without fee is
 #   hereby granted, provided that (a) this copyright and permission notice
@@ -74,7 +74,7 @@
 
 <!-- I don't know exactly what these are, but the values were enumerated via:
      grep "conf=" *
---> 
+-->
 <!ENTITY % service_confs  "( 3 | 5 )" >
 
 
@@ -110,7 +110,7 @@
 <!ELEMENT debugging 	EMPTY >
 <!ATTLIST debugging	level		%attr_numeric;	#IMPLIED >
 
-<!-- 
+<!--
      this element is started in nmap.c:nmap_main() and filled by
      output.c:write_host_status(), output.c:printportoutput(), and
      output.c:printosscanoutput()
@@ -123,7 +123,7 @@
 <!ATTLIST status	state		%host_states;	#REQUIRED >
 
 <!ELEMENT address	EMPTY >
-<!ATTLIST address	
+<!ATTLIST address
 			addr		%attr_ipaddr;	#REQUIRED
 			addrtype	%ip_versions;	"ipv4"
 >
