@@ -9,7 +9,7 @@ require 5.004;
 use XML::Twig;
 use vars qw($S %H %OS_LIST %F $DEBUG %R $NMAP_EXE);
 
-our $VERSION = '0.72';
+our $VERSION = '0.73';
 
 sub new {
 
@@ -120,8 +120,22 @@ sub reset_host_callback {$R{host_callback_ref} = $R{host_callback_register}=unde
 ################################################################################
 ##			PARSE METHODS					      ##
 ################################################################################
-sub parse {%H =();$S = undef;shift->{twig}->parse(@_);}
-sub parsefile {%H=();$S = undef;shift->{twig}->parsefile(@_);}
+#Safe parse and parsefile will return $@ which will contain the error
+#that occured if the parsing failed (it might be empty when no error occurred)
+sub parse {
+	my $self = shift;
+	%H =();$S = undef;
+	$self->{twig}->safe_parse(@_);
+	if($@){die $@;}
+	return $self;
+}
+sub parsefile {
+	my $self = shift;
+	%H=();$S = undef;
+	$self->{twig}->safe_parsefile(@_);
+	if($@){die $@;}
+	return $self;
+}
 sub parsescan {
 my $self = shift;
 my $nmap = shift;
@@ -138,11 +152,6 @@ return $self;
 }
 
 
-
-#Safe parse and parsefile will return $@ which will contain the error
-#that occured if the parsing failed (it might be empty when no error occurred)
-sub safe_parse {%H=();$S = undef;shift->{twig}->safe_parse(@_);$@}
-sub safe_parsefile {%H=();$S = undef;shift->{twig}->safe_parsefile(@_);$@}
 sub clean {%H = ();$S = undef;$_[0]->{twig}->purge;return $_[0];}
 
 ################################################################################
@@ -920,9 +929,15 @@ given as keyword-value pairs may follow the $source parameter. These override,
 for this call, any options or attributes passed through from the XML::Parser
 instance.
 
-A die call is thrown if a parse error occurs. Otherwise it will return
-the twig built by the parse. Use 'safe_parse()' if you want the
-parsing to return even when an error occurs.
+A die call is thrown if a parse error occurs. This method wraps the parsing
+in an "eval" block. $@ contains the error message on failure. I<NOTE: that the
+parsing still stops as soon as an error is detected, there is no way to keep
+going after an error.>
+
+If you get an error or your program dies due to parsing, please check that the
+xml information is compliant. If you are using parsescan() or an open filehandle
+, make sure that the nmap scan that you are performing is successful in returning
+xml information. (Sometimes using loopback addresses causes nmap to fail).
 
 =item B<parsescan($nmap_exe, $args , @ips)> I<Experimental>
 
@@ -946,30 +961,24 @@ program will die if you try and pass any of these options because it decides the
 type of output nmap will generate. The IP addresses can be nmap-formatted
 addresses (see nmap(1)>
 
+If you get an error or your program dies due to parsing, please check that the
+xml information is compliant. If you are using parsescan() or an open filehandle
+, make sure that the nmap scan that you are performing is successful in returning
+xml information. (Sometimes using loopback addresses causes nmap to fail).
+
 =item B<parsefile($filename [, opt =E<gt> opt_value [...]])>
 
 This method is inherited from XML::Parser. This is the same as parse() except
 that it takes in a  filename that it will OPEN and parse. The file is closed no
 matter how C<parsefile()> returns.
 
-A die call is thrown if a parse error occurs. Use C<safe_parsefile()> if you
-want the parsing to return even when an error occurs.
+A die call is thrown if a parse error occurs. This method wraps the parsing
+in an "eval" block. $@ contains the error message on failure. I<NOTE: that the
+parsing still stops as soon as an error is detected, there is no way to keep
+going after an error.>
 
-=item B<safe_parse($source [, opt =E<gt> opt_value [...]])>
-
-This method is similar to "parse" except that it wraps the parsing
-in an "eval" block. $@ contains the error message on failure.
-
-Note that the parsing still stops as soon as an error is detected,
-there is no way to keep going after an error.
-
-=item B<safe_parsefile($source [, opt =E<gt> opt_value [...]])>
-
-This method is similar to "parsefile" except that it wraps the
-parsing in an "eval" block. $@ contains the error message on failure
-
-Note that the parsing still stops as soon as an error is detected,
-there is no way to keep going after an error.
+If you get an error or your program dies due to parsing, please check that the
+xml information is compliant.
 
 =item B<clean()>
 
@@ -1392,6 +1401,11 @@ callback function is called for every host that the parser encounters.
 
  }
 
+=head1 BUG REPORTS
+
+Please submit any bugs to:
+L<http://sourceforge.net/tracker/?group_id=97509&atid=618345>
+
 =head1 SEE ALSO
 
  nmap, L<XML::Twig>
@@ -1400,14 +1414,6 @@ The Nmap::Parser::XML page can be found at: L<http://npx.sourceforge.net/>.
 It contains the latest developments on the module. The nmap security scanner
 homepage can be found at: L<http://www.insecure.org/nmap/>. This project is also
 on sourceforge.net: L<http://sourceforge.net/projects/npx/>
-
-=begin html
-
-<img src="http://sourceforge.net/sflogo.php?group_id=97509&amp;type=5"
- align='center' alt="SourceForge.net Logo" border="0" />
-<br>
-
-=end html
 
 =head1 ACKNOWLEDGEMENTS
 

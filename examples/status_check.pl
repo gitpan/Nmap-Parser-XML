@@ -211,6 +211,11 @@ These are ONLY examples of how the output would look like.
           192.168.2.4
 
 
+=head1 BUG REPORTS
+
+Please submit any bugs to:
+L<http://sourceforge.net/tracker/?group_id=97509&atid=618345>
+
 =head1 SEE ALSO
 
 L<Nmap::Parser::XML>

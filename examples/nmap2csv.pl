@@ -301,6 +301,12 @@ The output will proably look like this:
 
 Nice, eh? Remember to import this data as pure text into Excel or OpenOffice :-)
 
+
+=head1 BUG REPORTS
+
+Please submit any bugs to:
+L<http://sourceforge.net/tracker/?group_id=97509&atid=618345>
+
 =head1 SEE ALSO
 
 L<Nmap::Parser::XML>

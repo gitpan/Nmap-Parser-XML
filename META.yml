@@ -1,11 +1,10 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Nmap-Parser-XML
-version:      0.71_2
+version:      0.73
 version_from: XML.pm
 installdirs:  site
 requires:
-    XML::Parser:                   2.23
     XML::Twig:                     3.09
 
 distribution_type: module

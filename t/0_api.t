@@ -4,7 +4,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 73;
+use Test::More tests => 71;
 use vars qw($host $p $FH $scaninfo @test %test $test);
 use_ok('Nmap::Parser::XML');
 no warnings;
@@ -86,8 +86,6 @@ parsefile
 parsescan
 register_host_callback
 reset_host_callback
-safe_parse
-safe_parsefile
 set_osfamily_list
 );
 

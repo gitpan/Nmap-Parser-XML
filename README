@@ -1,4 +1,4 @@
-Nmap/Parser/XML version 0.72
+Nmap/Parser/XML version 0.73
 ============================
 
 nmap output parser in perl
@@ -45,7 +45,11 @@ not really need the executable, but the xml output that you will be parsing
 
 CHANGES
 
-Changes from 0.71 to 0.72
+Changes from 0.71 to 0.73
+	- BugID 888187 is fixed : removed tests that require loopback addresses.
+	- removed safe_* functions and placed them in the actual parsing
+	functions. (I don't think they were never used.
+	- updated BUG REPORT information
 	- removed IGNORE_ADDPORTS constant
 	- added contribution from Sebastian: nmap2csv.
 	- edited the links to the sourceforge project site.

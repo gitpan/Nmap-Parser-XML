@@ -6,7 +6,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 3;
+use Test::More tests => 1;
 use constant IP => '127.0.0.1';
 use Nmap::Parser::XML;
 no warnings;
@@ -19,9 +19,6 @@ my $nmap_exe = find_nmap();
 SKIP: {
 skip 'Nmap executable could not be found on PATH!',2 unless($nmap_exe ne '');
 ok($nmap_exe, "Testing find_nmap()");
-skip "OS does not like loopbacks",2 if(lc($^O) =~ /win|solaris|sunos/);
-ok($p->parsescan($nmap_exe,'-sP', IP), "Testing parsescan()" );
-is($p->get_host(IP)->addr(),IP, "Verifying information" );
 }
 
 

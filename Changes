@@ -5,6 +5,11 @@ Latest version: http://sourceforge.net/projects/npx
 
 Website:        http://npx.sourceforge.net/
 
+Changes for 0.73
+	- removed safe_* functions and placed them in the actual parsing
+	functions. (I don't think they were never used.
+	- updated BUG REPORT information
+
 Changes for 0.72
 	- removed IGNORE_ADDPORTS constant
 	- added contribution from Sebastian: nmap2csv.
