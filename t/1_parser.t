@@ -1,13 +1,13 @@
 #!/usr/bin/perl
 
 
-
 use strict;
 use blib;
 use File::Spec;
 use Cwd;
 use Test::More tests => 200;
 use Nmap::Parser::XML;
+no warnings;
 use constant FIRST => 0;
 use constant SECOND => 1;
 use constant THIRD => 2;

@@ -8,6 +8,7 @@ use File::Spec;
 use Cwd;
 use Test::More tests => 102;
 use Nmap::Parser::XML;
+no warnings;
 use constant FIRST =>  0;
 use constant SECOND => 1;
 use constant THIRD =>  2;

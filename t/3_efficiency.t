@@ -8,6 +8,7 @@ use File::Spec;
 use Cwd;
 use Test::More;
 use Nmap::Parser::XML;
+no warnings;
 use constant HOST1 => '127.0.0.1';
 use constant HOST2 => '127.0.0.2';
 use constant HOST3 => '127.0.0.3';

@@ -10,9 +10,7 @@ use XML::Twig;
 use vars qw($S %H %OS_LIST %F $DEBUG %R);
 use constant IGNORE_ADDPORT 	=> 1;
 
-no warnings;
-
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 sub new {
 
@@ -411,8 +409,8 @@ return $self;
 }
 
 sub num_of_services {
+$_[1] ||='';
 return if(ref($_[0]->{numservices}) ne 'HASH');
-
 if($_[1] ne ''){return $_[0]->{numservices}{$_[1]};}
 else {my $total = 0;for (values %{$_[0]->{numservices}}){$total +=$_;}
 return $total;}
@@ -545,6 +543,7 @@ elsif(lc($_[1]) eq 'open'){  return $_[0]->{os}{portused}{'open'};}
 sub os_family {return ($_[0]->{os}{osfamily_names});}
 
 sub os_class {
+	$_[1] ||='';
 return if(ref($_[0]->{os}{osclass}) ne 'ARRAY');
 if($_[1] eq ''){return scalar @{$_[0]->{os}{osclass}};}
 elsif($_[1] ne ''){return @{@{$_[0]->{os}{osclass}}[$_[1] - 1]};}

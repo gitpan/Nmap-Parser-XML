@@ -1,4 +1,4 @@
-Nmap/Parser/XML version 0.70
+Nmap/Parser/XML version 0.71
 ============================
 
 nmap output parser in perl
@@ -44,18 +44,38 @@ not really need the executable, but the xml output that you will be parsing
 
 CHANGES
 
-Changes from 0.69 to 0.70
-	- updated changes from 0.69
+Changes from 0.68 to 0.71
+	- fixed a small bug in the installation under MSWin32 (PM_FILTER) which
+	caused all tests to fail. (It was removing things that weren't comments.
 	- updated documentation
 	- fixed documentation bug of all the example scripts
 	- updated examples script: they are more robust. Can either take
 		the example file as input, or actually run scans.
+	- new utility script : scan_host.pl
+	- added EXAMPLES seciton in documentation
+	- parses new 'version', 'extrainfo', and 'product'
+		att from service tag (3.40+)
+	- added *_service_version to *::Host
+	- added xml_version to *::ScanInfo
+	- more error prevention mechanisms
+	- added os_osfamily, os_gen, os_vendor, os_type added
+	- added OSINFO filter
+	- ::ScanInfo::scan_types does not return number of scan types in scalar
+		format. It will always return an array containing the scan
+		types.
+	- osfamily does not return the actual string (comma delimited), it always
+	returns an array of os matches.
+	- DEPRECATED: tcpsequence, ipidsequence, tcptssequence
+		now use:
+		tcpsequence_class, tcpsequence_values, tcpsequence_index
+		ipidsequence_class, ipidsequence_values
+		tcptssequence_class, tcptssequence_values
 
 FOR OTHER CHANGE INFORMATION SEE THE "CHANGES" FILE
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2003 Anthony G Persaud L<ironstar@iastate.edu>
+Copyright (C) 2004 Anthony G Persaud <ironstar@iastate.edu>
 
  http://www.opensource.org/licenses/gpl-license.php
 

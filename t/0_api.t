@@ -2,13 +2,12 @@
 
 use strict;
 use blib;
-use warnings;
 use File::Spec;
 use Cwd;
 use Test::More tests => 72;
 use vars qw($host $p $FH $scaninfo @test %test $test);
 use_ok('Nmap::Parser::XML');
-
+no warnings;
 $p = new Nmap::Parser::XML;
 $scaninfo = new Nmap::Parser::XML::ScanInfo;
 $host = new Nmap::Parser::XML::Host;

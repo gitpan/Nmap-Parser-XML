@@ -25,7 +25,6 @@ WriteMakefile(
     ABSTRACT		=> 'nmap parser for XML output scan data',
     AUTHOR		=> 'Anthony G Persaud <ironstar@iastate.edu>',
     clean		=> {FILES => "*.tar *.old"},
-    PM_FILTER 		=> 'grep -v "^\\#"',
    # EXE_FILES   	=> [ map {"examples/$_/$_"} @programs], #soon
     NAME		=> 'Nmap::Parser::XML',
     PREREQ_PM		=> \%depends,
