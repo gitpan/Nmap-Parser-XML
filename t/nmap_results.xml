@@ -6,25 +6,6 @@
 <verbose level="3" />
 <debugging level="0" />
 <host><status state="up" />
-<address addr="127.0.0.2" addrtype="ipv4" />
-<hostnames><hostname name="LocalHost 2" type="PTR" /></hostnames>
-<addport state="open" portid="22" protocol="tcp" owner=""/>
-<addport state="open" portid="80" protocol="tcp" owner=""/>
-<ports><extraports state="closed" count="2044" />
-<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" method="table" conf="3"  />
-</port>
-<port protocol="tcp" portid="80"><state state="open" /><service name="http" method="table" conf="3"  />
-</port>
-</ports>
-<os><osclass type="general purpose" vendor="Sun" osfamily="Solaris" osgen="8" accuracy="100"/>
-<osmatch name="Sun Solaris 8 early access beta through actual release" accuracy="100" />
-</os>
-<uptime seconds="1838659" lastboot="Wed Jun 11 09:13:35 2003" />
-<tcpsequence index="9999999" class="truly random" difficulty="Good luck!" values="4B1CC657,99519A3F,9F934F86,74DAA2B1,9A935F26,EC151FED" />
-<ipidsequence class="Incremental" values="FF62,FF63,FF64,FF65,FF66,FF67"/>
-<tcptssequence class="100HZ" values="AF591DD,AF591E9,AF591F5,AF59201,AF5920D,AF59219"/>
-</host>
-<host><status state="up" />
 <address addr="127.0.0.1" addrtype="ipv4" />
 <hostnames><hostname name="localhost.localdomain" type="PTR" /></hostnames>
 <addport state="open" portid="22" protocol="tcp" owner=""/>
@@ -63,6 +44,23 @@
 <ipidsequence class="All zeros" values="0,0,0,0,0,0"/>
 <tcptssequence class="100HZ" values="30299,302A5,302B1,302BD,302C9,302D5"/>
 </host>
+<host><status state="up" />
+<address addr="127.0.0.2" addrtype="ipv4" />
+<hostnames><hostname name="LocalHost 2" type="PTR" /></hostnames>
+<addport state="open" portid="22" protocol="tcp" owner=""/>
+<addport state="open" portid="80" protocol="tcp" owner=""/>
+<ports><extraports state="closed" count="2044" />
+<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" product="OpenSSH" version="3.5p1" extrainfo="protocol 1.99" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="80"><state state="open" /><service name="http" product="Apache httpd" version="2.0.40" extrainfo="(Red Hat Linux)" method="probed" conf="10" /></port>
+</ports>
+<os><osclass type="general purpose" vendor="Sun" osfamily="Solaris" osgen="8" accuracy="100"/>
+<osmatch name="Sun Solaris 8 early access beta through actual release" accuracy="100" />
+</os>
+<uptime seconds="1838659" lastboot="Wed Jun 11 09:13:35 2003" />
+<tcpsequence index="9999999" class="truly random" difficulty="Good luck!" values="4B1CC657,99519A3F,9F934F86,74DAA2B1,9A935F26,EC151FED" />
+<ipidsequence class="Incremental" values="FF62,FF63,FF64,FF65,FF66,FF67"/>
+<tcptssequence class="100HZ" values="AF591DD,AF591E9,AF591F5,AF59201,AF5920D,AF59219"/>
+</host>
 <host><status state="down" />
 <address addr="127.0.0.3" addrtype="ipv4" />
 </host>
@@ -84,6 +82,15 @@
 <address addr="127.0.0.5" addrtype="ipv4" />
 <hostnames><hostname name="host2" type="PTR" /></hostnames>
 <ports><extraports state="filtered" count="1644" />
+<port protocol="tcp" portid="22"><state state="open" />
+	<service name="ssh" product="OpenSSH" version="3.1p1" extrainfo="protocol 1.99" method="probed" conf="10" /></port>
+
+<port protocol="tcp" portid="112"><state state="open" />
+	<service name="rpcbind" version="2" method="probed" conf="10" /></port>
+
+<port protocol="tcp" portid="953"><state state="open" />
+	<service name="rndc" method="table" conf="3" /></port>
+
 </ports>
 </host>
 <host><status state="up" />
@@ -92,14 +99,13 @@
 <addport state="open" portid="22" protocol="tcp" owner=""/>
 <addport state="open" portid="80" protocol="tcp" owner=""/>
 <ports><extraports state="closed" count="1640" />
-<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" method="table" conf="3"  />
-</port>
-<port protocol="tcp" portid="23"><state state="filtered" /><service name="telnet" method="table" conf="3"  />
-</port>
-<port protocol="tcp" portid="80"><state state="open" /><service name="http" method="table" conf="3"  />
-</port>
-<port protocol="tcp" portid="135"><state state="filtered" /><service name="loc-srv" method="table" conf="3"  />
-</port>
+<port protocol="tcp" portid="111"><state state="open" /><service name="rpcbind" version="2" extrainfo="rpc #100000" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="135"><state state="filtered" /><service name="loc-srv" method="table" conf="3"  /></port>
+<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" product="OpenSSH" version="3.5p1" extrainfo="protocol 1.99" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="23"><state state="filtered" /><service name="telnet" method="table" conf="3"  /></port>
+<port protocol="tcp" portid="443"><state state="open" /><service name="http" product="Apache httpd" version="2.0.40" extrainfo="(Red Hat Linux)" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="6000"><state state="open" /><service name="X11" extrainfo="access denied" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="80"><state state="open" /><service name="http" product="Apache httpd" version="2.0.40" extrainfo="(Red Hat Linux)" method="probed" conf="10" /></port>
 </ports>
 <os><osclass type="router" vendor="Redback" osfamily="AOS" accuracy="97"/>
 <osclass type="broadband router" vendor="Thomson" osfamily="embedded" accuracy="97"/>

@@ -8,10 +8,11 @@ use strict;
 require 5.004;
 use XML::Twig;
 use vars qw($S %H %OS_LIST %F $DEBUG %R);
-use constant IGNORE_ADDPORT => 1;
+use constant IGNORE_ADDPORT 	=> 1;
 
+no warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 sub new {
 
@@ -73,6 +74,7 @@ $$self{twig}->setIgnoreEltsHandlers({
 	'tcpsequence' 	=> ($F{sequences} ? undef : 1),
 	'ipidsequence' 	=> ($F{sequences} ? undef : 1),
 	'tcptssequence' => ($F{sequences} ? undef : 1),
+	'os'		=> ($F{osinfo} ? undef : 1),
 	'uptime' 	=> ($F{uptime} ? undef : 1),
 	'scaninfo' 	=> ($F{scaninfo} ? undef : 1),
 	'finished' 	=> ($F{scaninfo} ? undef : 1),
@@ -85,6 +87,7 @@ return \%F;
 sub reset_filters {
 %F = (
 	osfamily 	=> 1,
+	osinfo		=> 1,
 	scaninfo	=> 1,
 	only_active 	=> 0,
 	sequences 	=> 1,
@@ -121,8 +124,11 @@ sub reset_host_callback {$R{host_callback_ref} = $R{host_callback_register}=unde
 ################################################################################
 sub parse {%H =();$S = undef;shift->{twig}->parse(@_);}
 sub parsefile {%H=();$S = undef;shift->{twig}->parsefile(@_);}
-sub safe_parse {%H=();$S = undef;shift->{twig}->safe_parse(@_);}
-sub safe_parsefile {%H=();$S = undef;shift->{twig}->safe_parsefile(@_);}
+
+#Safe parse and parsefile will return $@ which will contain the error
+#that occured if the parsing failed (it might be empty when no error occurred)
+sub safe_parse {%H=();$S = undef;shift->{twig}->safe_parse(@_);$@}
+sub safe_parsefile {%H=();$S = undef;shift->{twig}->safe_parsefile(@_);$@}
 sub clean {%H = ();$S = undef;$_[0]->{twig}->purge;return $_[0];}
 
 ################################################################################
@@ -182,6 +188,7 @@ my ($twig,$host) = @_;
 unless($F{scaninfo}){return;}
 $S->{start_time} = $host->{'att'}->{'start'};
 $S->{nmap_version} = $host->{'att'}->{'version'};
+$S->{xml_version} = $host->{'att'}->{'xmloutputversion'};
 $S->{args} = $host->{'att'}->{'args'};
 $S = Nmap::Parser::XML::ScanInfo->new($S);
 
@@ -194,17 +201,20 @@ $host->{'att'}->{'time'};$twig->purge;}
 
 
 sub _host_hdlr {
-my($twig, $host)= @_; # handlers are always called with those 2 arguments
+# handlers are always called with those 2 arguments
+my($twig, $host)= @_;
 my ($addr,$tmp);
     if(not defined($host)){return undef;}
-    $tmp        = $host->first_child('address');         # get the element text
+    # get the element text
+    $tmp        = $host->first_child('address');
     if(not defined $tmp){return undef;}
     $addr = $tmp->{'att'}->{'addr'};
     if(!defined($addr) || $addr eq ''){return undef;}
     $H{$addr}{addr} = $addr;
     $H{$addr}{addrtype} = $tmp->{'att'}->{'addrtype'};
     $tmp = $host->first_child('hostnames');
-    @{$H{$addr}{hostnames}} = _hostnames_hdlr($tmp,$addr) if(defined ($tmp = $host->first_child('hostnames')));
+    @{$H{$addr}{hostnames}} = _hostnames_hdlr($tmp,$addr)
+    		if(defined ($tmp = $host->first_child('hostnames')));
     $H{$addr}{status} = $host->first_child('status')->att('state');
     if($H{$addr}{status} eq 'down')
     {	$twig->purge;
@@ -229,8 +239,8 @@ my ($addr,$tmp);
 
     if($R{host_callback_register})
     { &{$R{host_callback_ref}}($H{$addr}); delete $H{$addr};}
-
-    $twig->purge;                                      # purges the twig
+# purges the twig
+    $twig->purge;
 
 }
 
@@ -274,8 +284,11 @@ $tmp->{service_name} = 'unknown';
 if(defined $s){
 $tmp->{service_proto} = '';
 $tmp->{service_name} = $s->{'att'}->{'name'};
-$tmp->{service_proto} = $s->{'att'}->{'proto'} if($s->{'att'}->{'proto'});
-$tmp->{service_rpcnum} = $s->{'att'}->{'rpcnum'} if($tmp->{service_proto} eq 'rpc');
+$tmp->{service_version} = $s->{'att'}->{'version'};
+$tmp->{service_product} = $s->{'att'}->{'product'};
+$tmp->{service_extrainfo} = $s->{'att'}->{'extrainfo'};
+$tmp->{service_proto} = $s->{'att'}->{'proto'};
+$tmp->{service_rpcnum} = $s->{'att'}->{'rpcnum'};
 }
 
 return $tmp;
@@ -296,7 +309,7 @@ if(defined(my $os_list = $host->first_child('os'))){
     for my $o ($os_list->children('osmatch')){push @list, $o->{'att'}->{'name'};  }
     @{$H{$addr}{os}{names}} = @list;
 
-    $H{$addr}{os}{osfamily_names} = _match_os(@list) if($F{osfamily});
+    $H{$addr}{os}{osfamily_names} = _match_os(@list) if($F{osfamily} && $F{osinfo});
 
     @list = ();
     for my $o ($os_list->children('osclass'))
@@ -335,7 +348,6 @@ return \@names;
 
 sub _tcpsequence {
 my ($host,$addr) = (shift,shift);
-my $temp;
 my $seq = $host->first_child('tcpsequence');
 unless($seq){return undef;}
 
@@ -345,7 +357,6 @@ return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'},$seq->{'att'}->{'inde
 
 sub _ipidsequence {
 my ($host,$addr) = (shift,shift);
-my $temp;
 my $seq = $host->first_child('ipidsequence');
 unless($seq){return undef;}
 return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'}];
@@ -355,12 +366,12 @@ return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'}];
 
 sub _tcptssequence {
 my ($host,$addr) = (shift,shift);
-my $temp;
 my $seq = $host->first_child('tcptssequence');
 unless($seq){return undef;}
 return [$seq->{'att'}->{'class'},$seq->{'att'}->{'values'}];
 }
 
+#This is for Nmap::Parser::XML's osfamily match filter
 sub _match_os {
 
 shift if(ref($_[0]) eq __PACKAGE__);
@@ -377,6 +388,8 @@ for my $os_family (keys %OS_LIST){
 
 
 }
+
+#it will join all the matches with commas ex (mac,unix,win)
 if(scalar @matches){return (join ',', sort keys %{ {map {$_,1} @matches} } );}
 return 'other';
 
@@ -398,17 +411,21 @@ return $self;
 }
 
 sub num_of_services {
+return if(ref($_[0]->{numservices}) ne 'HASH');
+
 if($_[1] ne ''){return $_[0]->{numservices}{$_[1]};}
 else {my $total = 0;for (values %{$_[0]->{numservices}}){$total +=$_;}
 return $total;}
 }
 sub finish_time {return $_[0]->{finish_time};}
 sub nmap_version {return $_[0]->{nmap_version};}
+sub xml_version {return $_[0]->{xml_version};}
 sub args {return $_[0]->{args};}
 sub start_time {return $_[0]->{start_time};}
-sub scan_types {(wantarray) ? 	return (keys %{$_[0]->{type}}) :
-				return scalar(keys %{$_[0]->{type}});}
-sub proto_of_scan_type {return $_[0]->{type}{$_[1]};}
+sub scan_types {ref($_[0]->{type}) eq 'HASH' ?
+			return (keys %{$_[0]->{type}}) :
+			return;}
+sub proto_of_scan_type {$_[1] ? $_[0]->{type}{$_[1]} : undef;}
 
 
 ################################################################################
@@ -416,7 +433,13 @@ sub proto_of_scan_type {return $_[0]->{type}{$_[1]};}
 ################################################################################
 
 package Nmap::Parser::XML::Host;
-
+use constant OSFAMILY 		=> 0;
+use constant OSGEN		=> 1;
+use constant OSVENDOR		=> 2;
+use constant OSTYPE		=> 3;
+use constant CLASS		=> 0;
+use constant VALUES		=> 1;
+use constant INDEX		=> 2;
 
 sub new {
 my ($class,$self) = (shift);
@@ -429,8 +452,13 @@ return $self;
 sub status {return $_[0]->{status};}
 sub addr {return $_[0]->{addr};}
 sub addrtype {return $_[0]->{addrtype};}
-sub hostname  { return ${$_[0]->{hostnames}}[0];   } #returns the first hostname
-sub hostnames {($_[1]) ? 	return @{$_[0]->{hostnames}}[ $_[1] - 1] :
+#returns the first hostname
+sub hostname  { exists($_[0]->{hostnames}) ? return ${$_[0]->{hostnames}}[0] :
+					     return undef;   }
+sub hostnames {
+	if(! exists $_[0]->{hostnames}){return undef;}
+
+	($_[1]) ? 	return @{$_[0]->{hostnames}}[ $_[1] - 1] :
 				return @{$_[0]->{hostnames}};}
 
 sub extraports_state {return $_[0]->{ports}{extraports}{state};}
@@ -440,28 +468,31 @@ sub extraports_count {return $_[0]->{ports}{extraports}{count};}
 sub _get_ports {
 my $proto = pop;
 my $param = lc($_[1]);
+#Error Checking - if the person used port filters, then return undef
+return if($Nmap::Parser::XML::F{portinfo} == 0);
+return unless(ref($_[0]->{ports}{$proto}) eq 'HASH');
 
 if($param eq 'closed' || $param eq 'filtered' || $param eq 'open')
 {
 	my @matched_ports;
 	for my $p (keys %{ $_[0]->{'ports'}{$proto}   })
-	{
-		if($_[0]->{ports}{$proto}{$p}{state} eq $param)
+	{	if($_[0]->{ports}{$proto}{$p}{state} eq $param)
 			{push @matched_ports, $p;}
 	}
 	return sort {$a <=> $b} @matched_ports;
 }
-else {return sort {$a <=> $b} (keys %{$_[0]->{ports}{$proto}});}
+else {return sort {$a <=> $b} (keys %{$_[0]->{ports}{$proto}})}
 
 }
 
 sub _get_port_state {
 my $proto = pop;
 my $param = lc($_[1]);
+ return undef if($Nmap::Parser::XML::F{portinfo} == 0);
+
+if($proto ne 'tcp' && $proto ne 'udp'){return undef;}
 	if(exists ${$_[0]}{ports}{$proto}{$param})
 		{return $_[0]->{ports}{$proto}{$param}{state};}
-	elsif($Nmap::Parser::XML::F{portinfo} == 0)
-		{return undef;}
 	else {return 'closed';}
 }
 
@@ -469,23 +500,40 @@ my $param = lc($_[1]);
 sub tcp_ports { return _get_ports(@_,'tcp');}
 sub udp_ports { return _get_ports(@_,'udp');}
 
-sub tcp_ports_count {return scalar(keys %{$_[0]->{ports}{tcp}})}
-sub udp_ports_count {return scalar(keys %{$_[0]->{ports}{udp}})}
+#Make sure its exists, if not it will die
+sub tcp_ports_count {(ref($_[0]->{ports}{tcp}) eq 'HASH') ?
+			return scalar(keys %{$_[0]->{ports}{tcp}}) :
+			return 0;}
+
+sub udp_ports_count {(ref($_[0]->{ports}{udp}) eq 'HASH') ?
+			return scalar(keys %{$_[0]->{ports}{udp}}) :
+			return 0;}
 
 sub tcp_port_state {return _get_port_state(@_,'tcp');}
 sub udp_port_state {return _get_port_state(@_,'udp');}
 
-sub tcp_service_name {return $_[0]->{ports}{tcp}{$_[1]}{service_name};}
-sub udp_service_name {return $_[0]->{ports}{udp}{$_[1]}{service_name};}
+sub tcp_service_name {$_[1] ne '' ?  $_[0]->{ports}{tcp}{$_[1]}{service_name} :  undef;}
+sub udp_service_name {$_[1] ne '' ?  $_[0]->{ports}{udp}{$_[1]}{service_name} :  undef;}
 
-sub tcp_service_proto {return $_[0]->{ports}{tcp}{$_[1]}{service_proto};}
-sub udp_service_proto {return $_[0]->{ports}{udp}{$_[1]}{service_proto};}
+sub tcp_service_proto {$_[1] ne '' ?  $_[0]->{ports}{tcp}{$_[1]}{service_proto} :  undef;}
+sub udp_service_proto {$_[1] ne '' ?  $_[0]->{ports}{udp}{$_[1]}{service_proto} :  undef;}
 
-sub tcp_service_rpcnum {return $_[0]->{ports}{tcp}{$_[1]}{service_rpcnum};}
-sub udp_service_rpcnum {return $_[0]->{ports}{udp}{$_[1]}{service_rpcnum};}
+sub tcp_service_rpcnum {$_[1] ne '' ?  $_[0]->{ports}{tcp}{$_[1]}{service_rpcnum} :  undef;}
+sub udp_service_rpcnum {$_[1] ne '' ?  $_[0]->{ports}{udp}{$_[1]}{service_rpcnum} :  undef;}
 
-sub os_match {return @{$_[0]->{os}{names}}[0];}
-sub os_matches {($_[1]) ? 	return @{$_[0]->{os}{names}}[ $_[1] - 1 ] :
+sub tcp_service_version {$_[1] ne '' ?  $_[0]->{ports}{tcp}{$_[1]}{service_version} :  undef;}
+sub udp_service_version {$_[1] ne '' ?  $_[0]->{ports}{udp}{$_[1]}{service_version} :  undef;}
+
+sub tcp_service_product {$_[1] ne '' ?  $_[0]->{ports}{tcp}{$_[1]}{service_product} :  undef;}
+sub udp_service_product {$_[1] ne '' ?  $_[0]->{ports}{udp}{$_[1]}{service_product} :  undef;}
+
+sub tcp_service_extrainfo {$_[1] ne '' ?  $_[0]->{ports}{tcp}{$_[1]}{service_extrainfo} :  undef;}
+sub udp_service_extrainfo {$_[1] ne '' ?  $_[0]->{ports}{udp}{$_[1]}{service_extrainfo} :  undef;}
+
+sub os_match {ref($_[0]->{os}{names}) eq 'ARRAY' ? ${$_[0]->{os}{names}}[0] : undef;}
+sub os_matches {
+if(! exists $_[0]->{os}{names}){return undef;}
+	($_[1]) ? 	return @{$_[0]->{os}{names}}[ $_[1] - 1 ] :
 				return (@{$_[0]->{os}{names}});}
 
 sub os_port_used {
@@ -494,19 +542,52 @@ if(lc($_[1]) eq 'closed'){return $_[0]->{os}{portused}{'closed'};}
 elsif(lc($_[1]) eq 'open'){  return $_[0]->{os}{portused}{'open'};}
 }
 
-sub os_family {(wantarray) ? 	return (split ',', $_[0]->{os}{osfamily_names}) :
-				return $_[0]->{os}{osfamily_names};}
+sub os_family {return ($_[0]->{os}{osfamily_names});}
 
 sub os_class {
-if($_[1] eq ''){return @{@{$_[0]->{os}{osclass}}[0]}}
-elsif(lc($_[1]) eq 'total'){return scalar @{$_[0]->{os}{osclass}};}
+return if(ref($_[0]->{os}{osclass}) ne 'ARRAY');
+if($_[1] eq ''){return scalar @{$_[0]->{os}{osclass}};}
 elsif($_[1] ne ''){return @{@{$_[0]->{os}{osclass}}[$_[1] - 1]};}
-
 	}
 
-sub tcpsequence {return @{$_[0]->{tcpsequence}}    if($_[0]->{tcpsequence});}
-sub ipidsequence {return @{$_[0]->{ipidsequence}}  if($_[0]->{ipidsequence});}
-sub tcptssequence {return @{$_[0]->{tcptssequence}} if($_[0]->{tcptssequence});}
+sub os_vendor {
+return if(ref($_[0]->{os}{osclass}) ne 'ARRAY');
+if($_[1] > 0){return ${$_[0]->{os}{osclass}}[ $_[1] - 1 ][OSVENDOR]}
+else {return ${$_[0]->{os}{osclass}}[0][OSVENDOR] }
+}
+
+sub os_gen {
+return if(ref($_[0]->{os}{osclass}) ne 'ARRAY');
+if($_[1] > 0){return ${$_[0]->{os}{osclass}}[ $_[1] - 1 ][OSGEN]}
+else {return ${$_[0]->{os}{osclass}}[0][OSGEN] }
+	}
+
+sub os_osfamily {
+
+return if(ref($_[0]->{os}{osclass}) ne 'ARRAY');
+if($_[1] > 0){return ${$_[0]->{os}{osclass}}[ $_[1] - 1 ][OSFAMILY]}
+else {return ${$_[0]->{os}{osclass}}[0][OSFAMILY] }
+	}
+
+sub os_type {
+return if(ref($_[0]->{os}{osclass}) ne 'ARRAY');
+if($_[1] > 0){return ${$_[0]->{os}{osclass}}[ $_[1] - 1 ][OSTYPE]}
+else {return ${$_[0]->{os}{osclass}}[0][OSTYPE] }
+	}
+
+sub tcpsequence {return @{$_[0]->{tcpsequence}}    if(ref($_[0]->{tcpsequence}) eq 'ARRAY');}
+sub tcpsequence_class {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ? ${$_[0]->{tcpsequence}}[CLASS] :  undef;}
+sub tcpsequence_values {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ? ${$_[0]->{tcpsequence}}[VALUES] :  undef;}
+sub tcpsequence_index {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ?  ${$_[0]->{tcpsequence}}[INDEX] :  undef;}
+
+sub ipidsequence {return @{$_[0]->{ipidsequence}}  if(ref($_[0]->{ipidsequence}) eq 'ARRAY');}
+sub ipidsequence_class {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ?  ${$_[0]->{ipidsequence}}[CLASS] :  undef;}
+sub ipidsequence_values {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ? ${$_[0]->{ipidsequence}}[VALUES] :  undef;}
+
+
+sub tcptssequence {return @{$_[0]->{tcptssequence}} if(ref($_[0]->{tcptssequence}) eq 'ARRAY');}
+sub tcptssequence_class {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ?  ${$_[0]->{tcptssequence}}[CLASS] :  undef;}
+sub tcptssequence_values {(ref($_[0]->{tcpsequence}) eq 'ARRAY') ? ${$_[0]->{tcptssequence}}[VALUES] :  undef;}
 
 sub uptime_seconds {return $_[0]->{uptime}{seconds};}
 sub uptime_lastboot {return $_[0]->{uptime}{lastboot};}
@@ -527,8 +608,14 @@ Nmap::Parser::XML - nmap parser for xml scan data using perl.
 
  	#PARSING
   my $npx = new Nmap::Parser::XML;
+
+  #piping output
+  open $fh, 'nmap -O -oX - localhost |' or die;
   $npx->parse($fh); #filehandle or nmap xml output string
-  #or $npx->parsefile('nmap_output.xml') for files
+  close $fh;
+
+  #or
+  $npx->parsefile('nmap_output.xml') #using filenames
 
  	#GETTING SCAN INFORMATION
 
@@ -555,14 +642,19 @@ Nmap::Parser::XML - nmap parser for xml scan data using perl.
   $p->clean(); #frees memory
   # ... do other stuff if you want ...
 
+I<Note:> You can either pass the $npx object a filehandle (piping nmap
+output using the nmap '-oX -' option, or you can pass it a filename. You can
+get the information the standard way using methods, or you can do it using
+callbacks (see more of the doc).
+
 =head1 DESCRIPTION
 
-This is an stand-alone output parser for nmap XML reports. This uses the XML::Twig library
-which is fast and memory efficient. This module does not do a nmap scan
-(See Nmap::Scanner for that functionality). It either can parse a nmap xml file,
-or it can take a filehandle that is piped from a current nmap running scan using '-oX -'
-switch.This module, in the authors opinion, is easier to use for basic information
-gathering of hosts.
+This is an stand-alone output parser for nmap XML reports. This uses the
+XML::Twig library which is fast and memory efficient. This module does not do a
+nmap scan (See Nmap::Scanner for that functionality). It either can parse a nmap
+xml file, or it can take a filehandle that is piped from a current nmap running
+scan using '-oX -' switch. This module was developed to speedup network security
+tool development when using nmap.
 
 This module is meant to be a balance of easy of use and efficiency. (more ease
 of use). I have added filtering capabilities and use various options on the twig
@@ -593,8 +685,8 @@ anyways.
 
 =item I<Run the parser>
 
-Parse the info. You use $npx->parse() or $npx->parsefile(), to parse the nmap xml
-information. This information is parsed and constructed internally.
+Parse the info. You use $npx->parse() or $npx->parsefile(), to parse the nmap
+xml information. This information is parsed and constructed internally.
 
 =item I<Get the Scan Info>
 
@@ -605,9 +697,10 @@ Nmap::Parser::XML::ScanInfo below.
 
 =item I<Get the Host Info>
 
-Use the $npx->get_host($addr) to obtain the Nmap::Parser::XML::Host object of the
-current address. Using this object you can call any methods in the Host object
-to retrieve the information that nmap obtained from this scan.
+Use the $npx->get_host($addr) to obtain the Nmap::Parser::XML::Host object of
+the current address. Using this object you can call any methods in the
+Nmap::Parser::XML::Host object to retrieve the information that nmap obtained
+from this scan.
 
  $npx->get_host($ip_addr);
 
@@ -708,14 +801,13 @@ tag in the xml file. If you feel the need for this tag. Send your feedback>
 
  $npx->parse_filters({
  	osfamily 	=> 1, #same as any variation. Ex: osfaMiLy
- 	only_active	=> 0   #same here
+ 	only_active	=> 0,  #same here
+ 	portinfo	=> 1,
  		});
 
-=item I<OSFAMILY>
+=item I<EXTRAPORTS>
 
-If set to true, (the default), it will match the OS guessed by nmap with a
-osfamily name that is given in the OS list. See set_osfamily_list(). If
-false, it will disable this matching (a bit of speed up in parsing).
+If set to true, (the default), it will parse the extraports tag.
 
 =item I<ONLY_ACTIVE>
 
@@ -725,10 +817,16 @@ Note that if you do not place this filter, it will parse and store (in memory)
 hosts that do not have much information. So calling a Nmap::Parser::XML::Host
 method on one of these hosts that were 'down', will return undef.
 
-=item I<SEQUENCES>
+=item I<OSFAMILY>
 
-If set to true, parses the tcpsequence, ipidsequence and tcptssequence
-information. This is the default.
+If set to true, (the default), it will match the OS guessed by nmap with a
+osfamily name that is given in the OS list. See set_osfamily_list(). If
+false, it will disable this matching (a bit of speed up in parsing).
+
+=item I<OSINFO>
+
+If set to true (default) it will parse any OS information found (osclass and
+osmatch tags). Otherwise, it will ignore these tags (faster parsing).
 
 =item I<PORTINFO>
 
@@ -741,6 +839,11 @@ If set to true, parses the scan information. This includes the 'scaninfo',
 'nmaprun' and 'finished' tags. This is set to true by default. If you don't
 care about the scan information of the file, then turn this off to enhance speed
 and memory usage.
+
+=item I<SEQUENCES>
+
+If set to true, parses the tcpsequence, ipidsequence and tcptssequence
+information. This is the default.
 
 =item I<UPTIME>
 
@@ -758,18 +861,19 @@ Resets the value of the filters to the default values:
  portinfo	=> 1
  scaninfo	=> 1
  uptime		=> 1
+ extraports	=> 1
+ osinfo		=> 1
 
 
 =item B<register_host_callback>
-I<Experimental - interface might change in future releases>
 
 Sets a callback function, (which will be called) whenever a host is found. The
 callback defined will receive as arguments the current Nmap::Parser::XML::Host
 that was just parsed. After the callback returns (back to Nmap::Parser::XML to
 keep on parsing other hosts), that current host will be deleted (so you don't
 have to delete it yourself). This saves a lot of memory since after you perform
-the actions you wish to perform on the Nmap::Parser::XML::Host object you currently
-have, it gets deleted from the tree.
+the actions you wish to perform on the Nmap::Parser::XML::Host object you
+currently have, it gets deleted from the tree.
 
  $npx->register_host_callback(\&host_handler);
 
@@ -783,7 +887,6 @@ have, it gets deleted from the tree.
  }
 
 =item B<reset_host_callback>
-I<Experimental - interface might change in future releases>
 
 Resets the host callback function, and does normal parsing.
 
@@ -795,49 +898,38 @@ Resets the host callback function, and does normal parsing.
 
 =item B<parse($source [, opt =E<gt> opt_value [...]])>
 
-Same as XML::Twig::parse().
-
-This method is inherited from XML::Parser.  The "SOURCE" parameter should
+This method is inherited from XML::Parser.  The $source parameter should
 either be a string containing the whole XML document, or it should be
-an open "IO::Handle". Constructor options to "XML::Parser::Expat" given as
-keyword-value pairs may follow the"SOURCE" parameter. These override, for this
-call, any options or attributes passed through from the XML::Parser instance.
+an open C<IO::Handle> (filehandle). Constructor options to C<XML::Parser::Expat>
+given as keyword-value pairs may follow the $source parameter. These override,
+for this call, any options or attributes passed through from the XML::Parser
+instance.
 
 A die call is thrown if a parse error occurs. Otherwise it will return
-the twig built by the parse. Use "safe_parse" if you want the
+the twig built by the parse. Use 'safe_parse()' if you want the
 parsing to return even when an error occurs.
 
 =item B<parsefile($filename [, opt =E<gt> opt_value [...]])>
 
-Same as XML::Twig::parsefile().
+This method is inherited from XML::Parser. This is the same as parse() except
+that it takes in a  filename that it will OPEN and parse. The file is closed no
+matter how C<parsefile()> returns.
 
-This method is inherited from XML::Parser. Open
-"$filename" for reading, then call "parse" with the open
-handle. The file is closed no matter how "parse" returns.
-
-A die call is thrown if a parse error occurs. Otherwise it willreturn
-the twig built by the parse. Use "safe_parsefile" if you want
-the parsing to return even when an error occurs.
+A die call is thrown if a parse error occurs. Use C<safe_parsefile()> if you
+want the parsing to return even when an error occurs.
 
 =item B<safe_parse($source [, opt =E<gt> opt_value [...]])>
 
-Same as XML::Twig::safe_parse().
-
 This method is similar to "parse" except that it wraps the parsing
-in an "eval" block. It returns the twig on success and 0 on failure (the twig
-object also contains the parsed twig). $@ contains the error message on failure.
+in an "eval" block. $@ contains the error message on failure.
 
 Note that the parsing still stops as soon as an error is detected,
 there is no way to keep going after an error.
 
 =item B<safe_parsefile($source [, opt =E<gt> opt_value [...]])>
 
-Same as XML::Twig::safe_parsefile().
-
 This method is similar to "parsefile" except that it wraps the
-parsing in an "eval" block. It returns the twig on success and 0 on
-failure (the twig object also contains the parsed twig) . $@ contains the error
-message on failure
+parsing in an "eval" block. $@ contains the error message on failure
 
 Note that the parsing still stops as soon as an error is detected,
 there is no way to keep going after an error.
@@ -929,15 +1021,17 @@ Returns the finish time of the nmap scan.
 
 Returns the version of nmap that ran.
 
+=item B<xml_version()>
+
+Returns the xml-output version of nmap-xml information.
+
 =item B<args()>
 
 Returns the command line parameters that were run with nmap
 
 =item B<scan_types()>
 
-In list context, returns an array containing the names of the scan types
-that were selected. In scalar context, returns the total number of scan types
-that were selected.
+Returns an array containing the names of the scan types that were selected.
 
 =item B<proto_of_scan_type($scan_type)>
 
@@ -1031,8 +1125,8 @@ Again, you could filter what ports you wish to receive:
 
 =item B<tcp_ports_count()>, B<udp_ports_count()>
 
-Returns the number of tcp/udp ports found. This is a short-cut function (but more
-efficient) to:
+Returns the number of tcp/udp ports found. This is a short-cut function (but
+more efficient) to:
 
  scalar @{[$host->tcp_ports]} == $host->tcp_ports_count;
 
@@ -1040,10 +1134,24 @@ efficient) to:
 
 Returns the state of the given tcp/udp port.
 
+=item B<tcp_service_extrainfo($port)>, B<udp_service_extrainfo($port)>
+
+Returns any extra information about the running service. This information is
+usually available when the scan performed was version scan (-sV).
+
+I<NOTE> This attribute is only available in new versions of nmap (3.40+).
+
 =item B<tcp_service_name($port)>, B<udp_service_name($port)>
 
 Returns the name of the service running on the
-given udp $port. (if any)
+given tcp/udp $port. (if any)
+
+=item B<tcp_service_extrainfo($port)>, B<udp_service_extrainfo($port)>
+
+Returns the service product information from the nmap service information. This
+information is available when the scan performed was version scan (-sV).
+
+I<NOTE> This attribute is only available in new versions of nmap (3.40+).
 
 =item B<tcp_service_proto($port)>, B<udp_service_proto($port)>
 
@@ -1054,6 +1162,13 @@ given by nmap.
 
 Returns the rpc number of the service on the given port. I<This value only
 exists if the protocol on the given port was found to be RPC by nmap.>
+
+=item B<tcp_service_version($port)>, B<udp_service_version($port)>
+
+Returns the version content of the service running on the
+given tcp/udp $port. (if any)
+
+I<NOTE> This attribute is only available in new versions of nmap (3.40+).
 
 =item B<os_match>
 
@@ -1081,13 +1196,13 @@ closed is returned. (no kidding...). Default, the open port number is returned.
 
 =item B<os_family()>
 
-Returns the osfamily_name that was matched to the given host. This osfamily
-value is determined by the list given in the *_osfamily_list() functions.
+Returns the osfamily_name(s) that was matched to the given host. It is comma
+delimited. This osfamily value is determined by the list given in the
+*_osfamily_list() functions. (Example of value: 'solaris,unix')
 
 I<Note: see set_osfamily_list()>
 
 =item B<os_class([$number])>
-I<Experimental - interface might change in future releases>
 
 Returns the os_family, os_generation and os_type that was guessed by nmap. The
 os_class tag does not always appear in all nmap OS fingerprinting scans. This
@@ -1096,12 +1211,13 @@ this. If you want a customized (and sure) way of determining an os_family value
 use the *_osfamily_list() functions to set them. These will determine what
 os_family value to give depending on the osmatches recovered from the scan.
 
- ($os_family,$os_gen,$os_type) = $host_obj->os_class(); #returns the first set
-
 There can be more than one os_class (different kernels of Linux for example).
 In order to access these extra os_class information, you can pass an index
-number to the function. If not number is given, the first os_class
-information is returned. The index starts at 1.
+number to the function. If no number is given, the total number of osclass
+tags parsed will be returned. The index starts at 1.
+
+  #returns the first set
+ $num_of_os_classes = $host_obj->os_class();
 
   #returns the first set (same as passing no arguments)
  ($os_family,$os_gen,$os_vendor,$os_type) = $host_obj->os_class(1);
@@ -1109,31 +1225,61 @@ information is returned. The index starts at 1.
   #returns os_gen value only. Example: '2.4.x' if is a Linux 2.4.x kernel.
   $os_gen                      = ($host_obj->os_class())[2];# os_gen only
 
-You can play with perl to get the values you want easily. Also, if argument
-'total' is passed, it will return the total number os_class tags parsed for this
-host.
+You can play with perl to get the values you want easily.
 
 I<Note: This tag is usually available in new versions of nmap. You can define
 your own os_family customizing the os_family lists using the
 Nmap::Parser::XML functions: set_osfamily_list() and get_osfamily_list().>
 
-=item B<tcpsequence()>
+=item B<os_osfamily([$number])>
 
-Returns the tcpsequence information in the format:
+Given a index number, it returns the osfamily value of that given osclass
+information. The index starts at 1.
 
- ($class,$values,$index) = $host_obj->tcpsequence();
+=item B<os_gen([$number])>
 
-=item B<ipidsequence()>
+Given a index number, it returns the os-generation value of that given osclass
+information. The index starts at 1.
 
-Returns the ipidsequence information in the format:
+=item B<os_vendor([$number])>
 
- ($class,$values) = $host_obj->ipidsequence();
+Given a index number, it returns the os vendor value of that given osclass
+information. The index starts at 1.
 
-=item B<tcptssequence()>
+=item B<os_type([$number])>
 
-Returns the tcptssequence information in the format:
+Given a index number, it returns the os type value of that given osclass
+information. Usually this is nmap's guess on how the machine is used for.
+Example: 'general purpose', 'web proxy', 'firewall'. The index starts at 1.
 
- ($class,$values) = $host_obj->tcptssequence();
+=item B<tcpsequence_class()>
+
+Returns the tcpsequence class information.
+
+=item B<tcpsequence_values()>
+
+Returns the tcpsequence values information.
+
+=item B<tcpsequence_values()>
+
+Returns the tcpsequence index information.
+
+=item B<ipidsequence_class()>
+
+Returns the ipidsequence class information
+
+
+=item B<ipidsequence_values()>
+
+Returns the ipidsequence values information
+
+=item B<tcptssequence_class()>
+
+Returns the tcptssequence class information.
+
+=item B<tcptssequence_values()>
+
+Returns the tcptssequence values information.
 
 =item B<uptime_seconds()>
 
@@ -1145,21 +1291,85 @@ Returns the time and date the given host was last rebooted.
 
 =back
 
+=head1 EXAMPLES
+
+=head3 Piping to NPX
+
+You can pipe the nmap output from the shell into the Nmap::Parser::XML object.
+The important detail to keep in mind is to remember to use the nmap switch:
+'-oX -' (without quotes) so that nmap pipes is XML output to STDOUT.
+
+ use Nmap::Parser::XML;
+
+ my $npx = new Nmap::Parser::XML;
+ #this is a simple example (no input checking done)
+ my @hosts = @ARGV; #Get hosts from stdin
+ #Will construct a TCP-scan with OS detection
+ #see nmap documentation for information on command-line switches
+
+ my $cmd = 'nmap -sT -O -oX - '.join(' ',@hosts);
+
+ open $FH , "$cmd |" || die "Could not run nmpa scan: $!\n";
+
+ $npx->parse($FH);
+
+ close $FH; #close will wait until parse() gets all the input
+
+ print "Active Hosts Scanned:\n";
+ for my $ip ($npx->get_host_list('up')){print $ip."\n";}
+
+ #... do more stuff with $npx ...
+
+ __END__
+
+=head3 Using Register-Callback
+
+This is probably the easiest way to write a script with using Nmap::Parser::XML,
+if you don't need the general scan information. During the parsing process, the
+parser will obtain information of every host from the xml scan output. The
+callback function is called after completely parsing a single host. When the
+callback returns (or you finish doing what you need to do for that host), the
+parser will delete all information of the host it had sent to the callback. This
+callback function is called for every host that the parser encounters.
+
+ use Nmap::Parser::XML;
+ my $npx = new Nmap::Parser::XML;
+
+ #NOTE: the callback function must be setup before parsing beings
+ $npx->register_host_callback( \&my_function_here );
+
+ #parsing will begin
+ $npx->parsefile('scanfile.xml');
+
+ sub my_function_here {
+ #you will receive a Nmap::Parser::XML::Host object for the current host
+ #that has just been finished scanned (or parsing)
+ my $host = shift;
+ print 'Scanned IP: '.$host->addr()."\n";
+ # ... do more stuff with $host ...
+
+ #when this function returns, the parser will delete the host information
+ #that it was holding (referring to $host).
+
+ return;
+
+ }
+
+=head1 SEE ALSO
+
+ nmap, L<XML::Twig>
+
+ http://www.insecure.org/nmap/
+ http://www.xmltwig.com
+
 =head1 ACKNOWLEDGEMENTS
 
 Thanks to everyone who has inspired and have provided feedback to improve and
-enhance this module: http://search.cpan.org/author/APERSAUD/Nmap-Parser-XML/
+enhance this module.
 
 =head1 AUTHOR
 
 Anthony G Persaud <ironstar@iastate.edu>
-
-=head1 SEE ALSO
-
-nmap, L<XML::Twig>
-
-  http://www.insecure.org/nmap/
-  http://www.xmltwig.com
 
 =head1 COPYRIGHT
 
@@ -1171,5 +1381,7 @@ version.
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+ http://www.opensource.org/licenses/gpl-license.php
 
 =cut

@@ -6,7 +6,7 @@ use strict;
 use blib;
 use File::Spec;
 use Cwd;
-use Test::More tests => 162;
+use Test::More tests => 200;
 use Nmap::Parser::XML;
 use constant FIRST => 0;
 use constant SECOND => 1;
@@ -85,7 +85,6 @@ ok(eq_set([$p->get_host_list('up')],[HOST1,HOST2, HOST4, HOST5, HOST6]), 'Testin
 ok(eq_set([$p->get_host_list('down')],[HOST3]), 'Testing get_host_list for correct hosts for with status = down');
 
 #FILTER BY OSFAMILY
-print $p->filter_by_osfamily('solaris','linux'),"\n";
 ok(eq_set([$p->filter_by_osfamily('solaris')],[HOST2, HOST6]),'Testing single osfamily filter');
 ok(eq_set([$p->filter_by_osfamily('solaris','linux')],[HOST2,HOST1,HOST6]), 'Testing multiple osfamily filter');
 
@@ -112,6 +111,7 @@ isa_ok($scaninfo = $p->get_scaninfo(), 'Nmap::Parser::XML::ScanInfo');
 
 #BASIC
 is($scaninfo->nmap_version(),'3.27','Testing nmap version');
+is($scaninfo->xml_version(),'1.0','Testing xmloutput version');
 is($scaninfo->args(),'nmap -v -v -v -oX test.xml -O -sTUR -p 1-1023 localhost','Testing nmap arguments');
 
 #NUM OF SERVICES
@@ -168,8 +168,6 @@ is_deeply([$host->udp_ports('open')],[qw(111)],'Testing udp ports "open"');
 is_deeply([$host->udp_ports('closed')],[qw(937)],'Testing udp ports "closed"');
 
 
-%test = (service_name => 'rpcbind',service_proto => 'rpc',service_rpcnum => 100000);
-
 
 is($host->tcp_port_state('22'),'filtered','Testing tcp_ports(port_number) filtered');
 is($host->udp_port_state('111'),'open','Testing udp_ports(port_number) open');
@@ -195,13 +193,12 @@ is($host->os_match, 'Linux Kernel 2.4.0 - 2.5.20','Testing os_match');
 is($host->os_matches(1), 'Linux Kernel 2.4.0 - 2.5.20','Testing os_matches(1)');
 
 #OS CLASS
-is_deeply([$host->os_class() ],['Linux','2.4.x','Linux','general purpose'],'Testing os_class() with no args');
 is_deeply([$host->os_class(1)],['Linux','2.4.x','Linux','general purpose'],'Testing os_class() with arg 1');
 is_deeply([$host->os_class(2)],['Solaris','8','Sun','general purpose'],'Testing os_class() with 2');
-is($host->os_class('total'),2,'Testing total count of os_class tags');
+is($host->os_class(),2,'Testing total count of os_class tags');
 
 #OSFAMILY
-is($host->os_family(),'linux','Testing os_generic() = linux');
+is($host->os_family(),'linux','Testing os_family() = linux');
 
 #OS PORT USED
 is($host->os_port_used(), 22, 'Testing os_port_used() with no arguments');
@@ -209,9 +206,11 @@ is($host->os_port_used('open'), 22, 'Testing os_port_used() using "open"');
 is($host->os_port_used('closed'), 1, 'Testing os_port_used() using "closed"');
 
 #SEQUENCES
-is_deeply([$host->tcpsequence()],['random positive increments','B742FEAF,B673A3F0,B6B42D41,B6C710A1,B6F23FC4,B72FA3A8',4336320],'Testing tcpsequence class,values,index');
-is_deeply([$host->ipidsequence()],['All zeros','0,0,0,0,0,0'],'Testing ipidsequence class,values');
-is_deeply([$host->tcptssequence()],['100HZ','30299,302A5,302B1,302BD,302C9,302D5'],'Testing tcptssequence class,values');
+is_deeply([$host->tcpsequence_class(), $host->tcpsequence_values(), $host->tcpsequence_index()],
+          ['random positive increments','B742FEAF,B673A3F0,B6B42D41,B6C710A1,B6F23FC4,B72FA3A8',4336320],
+          'Testing tcpsequence class,values,index');
+is_deeply([$host->ipidsequence_class(),$host->ipidsequence_values()],['All zeros','0,0,0,0,0,0'],'Testing ipidsequence class,values');
+is_deeply([$host->tcptssequence_class(), $host->tcptssequence_values()],['100HZ','30299,302A5,302B1,302BD,302C9,302D5'],'Testing tcptssequence class,values');
 
 #UPTIME
 is($host->uptime_seconds() , 1973, 'Testing uptime_seconds()');
@@ -240,11 +239,11 @@ is($host->hostnames(1), 'LocalHost 2','Testing for correct hostname (1)');
 is($host->extraports_state(),'closed','Testing extraports_state');
 is($host->extraports_count(),2044,'Testing extraports_count');
 
-is(scalar @{[$host->tcp_ports()]} , 2, 'Testing for tcp_ports(6)');
-is(scalar @{[$host->udp_ports()]} , 0, 'Testing for udp_ports(2)');
-
-is($host->tcp_ports_count , 2, 'Testing for tcp_ports_count(6)');
-is($host->udp_ports_count , 0, 'Testing for udp_ports_count(2)');
+is(scalar @{[$host->tcp_ports()]} , 2, 'Testing for tcp_ports(2)');
+is(scalar @{[$host->udp_ports()]} , 0, 'Testing for udp_ports(0)');
+print '|'.$_ .'|'for ($host->udp_ports());
+is($host->tcp_ports_count , 2, 'Testing for tcp_ports_count(2)');
+is($host->udp_ports_count , 0, 'Testing for udp_ports_count(0)');
 
 
 is_deeply([$host->tcp_ports()],[qw(22 80)],'Testing tcp ports found');
@@ -262,6 +261,8 @@ is($host->tcp_port_state('80'),'open','Testing tcp_ports(port_number) open');
 #TCP AND UDP SERVICE NAMES
 is($host->tcp_service_name('22'), 'ssh','Testing tcp_service_name(22) = sshd');
 is($host->tcp_service_name('80'), 'http','Testing tcp_service_name(80) = http');
+is($host->tcp_service_version('22'), '3.5p1','Testing tcp_service_name(22) = sshd');
+is($host->tcp_service_version('80'), '2.0.40','Testing tcp_service_name(80) = http');
 
 #OS MATCHES
 is(scalar @{[$host->os_matches()]} , 1,'Testing os_matches()');
@@ -269,16 +270,16 @@ is(scalar $host->os_matches(),1,'Testing for correct OS');
 is($host->os_matches(1), 'Sun Solaris 8 early access beta through actual release','Testing for correct OS');
 
 #OS CLASS
-is_deeply([$host->os_class() ],['Solaris','8','Sun','general purpose'],'Testing os_class() with no args');
-is($host->os_class('total'),1,'Testing total count of os_class tags');
+is_deeply([$host->os_class(1) ],['Solaris','8','Sun','general purpose'],'Testing os_class() with no args');
+is($host->os_class(),1,'Testing total count of os_class tags');
 
 #OSFAMILY
-is($host->os_family(),'solaris','Testing os_generic() = solaris');
+is($host->os_family(),'solaris','Testing os_family() = solaris');
 
 #SEQUENCES
-is_deeply([$host->tcpsequence()],['truly random','4B1CC657,99519A3F,9F934F86,74DAA2B1,9A935F26,EC151FED',9999999],'Testing tcpsequence class,values,index');
-is_deeply([$host->ipidsequence()],['Incremental','FF62,FF63,FF64,FF65,FF66,FF67'],'Testing ipidsequence class,values');
-is_deeply([$host->tcptssequence()],['100HZ','AF591DD,AF591E9,AF591F5,AF59201,AF5920D,AF59219'],'Testing tcptssequence class,values');
+is_deeply([$host->tcpsequence_class(), $host->tcpsequence_values(), $host->tcpsequence_index()],['truly random','4B1CC657,99519A3F,9F934F86,74DAA2B1,9A935F26,EC151FED',9999999],'Testing tcpsequence class,values,index');
+is_deeply([$host->ipidsequence_class(),$host->ipidsequence_values()],['Incremental','FF62,FF63,FF64,FF65,FF66,FF67'],'Testing ipidsequence class,values');
+is_deeply([$host->tcptssequence_class(),$host->tcptssequence_values()],['100HZ','AF591DD,AF591E9,AF591F5,AF59201,AF5920D,AF59219'],'Testing tcptssequence class,values');
 
 #UPTIME
 is($host->uptime_seconds() , 1838659, 'Testing uptime_seconds() : ');
@@ -347,6 +348,22 @@ is($host->hostname(), 'host2', 'Testing hostname');
 is($host->extraports_state(),'filtered','Testing extraports_state');
 is($host->extraports_count(),1644,'Testing extraports_count');
 
+is_deeply([$host->tcp_ports()],[qw(22 112 953)],'Testing tcp ports found');
+is_deeply([$host->tcp_ports('open')],[qw(22 112 953)],'Testing tcp ports "open"');
+
+is($host->tcp_port_state(22),'open','Testing tcp state open');
+
+is($host->tcp_service_name(22),'ssh','Testing service name ssh');
+is($host->tcp_service_name(112),'rpcbind','Testing service name rpcbind');
+is($host->tcp_service_name(953),'rndc','Testing service name rndc');
+
+is($host->tcp_service_version(22),'3.1p1','Testing service version 22');
+is($host->tcp_service_product(22),'OpenSSH','Testing service product 22');
+is($host->tcp_service_extrainfo(22),'protocol 1.99','Testing service info 22');
+
+is($host->tcp_service_version(112),2,'Testing tcp service version 112');
+is($host->tcp_service_version(953),undef,'Testing tcp service version 953');
+
 }
 
 ################################################################################
@@ -361,6 +378,23 @@ is($host->status(), 'up', 'Testing if status = up');
 is($host->addr(), HOST6, 'Testing for correct address');
 is($host->addrtype(), 'ipv4', 'Testing for correct address type - ipv4');
 is($host->hostname(), 'host7.net', 'Testing hostname');
+
+is($host->tcp_service_extrainfo(111),'rpc #100000','Testing service info 111');
+is($host->tcp_service_extrainfo(22),'protocol 1.99','Testing service info 22');
+is($host->tcp_service_extrainfo(443),'(Red Hat Linux)','Testing service info 443');
+is($host->tcp_service_extrainfo(6000),'access denied','Testing service info 6000');
+is($host->tcp_service_extrainfo(80),'(Red Hat Linux)','Testing service info 80');
+
+is($host->tcp_service_version(111),2,'Testing service name 111');
+is($host->tcp_service_version(22),'3.5p1','Testing tcp service version 443');
+is($host->tcp_service_version(443),'2.0.40','Testing tcp service version 443');
+is($host->tcp_service_version(80),'2.0.40','Testing tcp service version 80');
+is($host->tcp_service_version(6000),undef,'Testing tcp service version 6000');
+
+
+is($host->tcp_service_product(22),'OpenSSH','Testing tcp service product: 22');
+is($host->tcp_service_product(80),'Apache httpd','Testing tcp service product: 80');
+is($host->tcp_service_product(443),'Apache httpd','Testing tcp service product: 443');
 
 
 #OS MATCHES
@@ -379,12 +413,29 @@ is($host->os_matches(9), 'Cisco 11151/Arrowpoint 150 load balancer, Neoware (was
 
 
 #OS CLASS
-is_deeply([$host->os_class(1) ],['AOS','','Redback','router'],'Testing os_class() with no args');
-is_deeply([$host->os_class(15)],['embedded','','3Com','WAP'],'Testing os_class() with arg 1');
-is($host->os_class('total'),36,'Testing total count of os_class tags');
+is_deeply([$host->os_class(1) ],['AOS','','Redback','router'],'Testing os_class(1)');
+is_deeply([$host->os_class(15)],['embedded','','3Com','WAP'],'Testing os_class(15)');
+
+is($host->os_osfamily(1),'AOS','Testing os_osfamily');
+is($host->os_vendor(1),'Redback','Testing os_vendor');
+is($host->os_gen(1),undef,'Testing os_gen');
+is($host->os_type(1),'router','Testing os_type');
+
+is($host->os_osfamily(15),'embedded','Testing os_osfamily');
+is($host->os_vendor(15),'3Com','Testing os_vendor');
+is($host->os_gen(15),undef,'Testing os_gen');
+is($host->os_type(15),'WAP','Testing os_type');
+
+
+is($host->os_osfamily(20),'OpenBSD','Testing os_osfamily');
+is($host->os_vendor(20),'OpenBSD','Testing os_vendor');
+is($host->os_gen(20),'2.X','Testing os_gen');
+is($host->os_type(20),'general purpose','Testing os_type');
+
+is($host->os_class(),36,'Testing total count of os_class tags');
 
 #OSFAMILY
-is($host->os_family(),'solaris,switch','Testing os_generic() = switch');
+is($host->os_family(),'solaris,switch','Testing os_family() = solaris,switch');
 
 }
 
@@ -397,6 +448,7 @@ sub nmap_parse_filter_test {
 
 %test = (
 	osfamily	=> 0,
+	osinfo		=> 0,
 	scaninfo	=> 0,
 	only_active	=> 0,
 	sequences 	=> 0,
@@ -409,6 +461,7 @@ is_deeply($p->parse_filters(\%test),\%test,'Testing parse filter set');
 
 %test = (
 	osfamily 	=> 0,
+	osinfo		=> 0,
 	scaninfo	=> 1,
 	only_active	=> 1,
 	sequences 	=> 0,
@@ -420,6 +473,7 @@ is_deeply($p->parse_filters(\%test),\%test,'Testing parse filter set');
 is_deeply($p->parse_filters({only_active=>1,scaninfo=>1}),\%test,'Testing for filter permanence');
 %test = (
 	osfamily 	=> 1,
+	osinfo		=> 1,
 	scaninfo	=> 1,
 	only_active	=> 0,
 	sequences 	=> 1,

@@ -1,21 +1,30 @@
-Nmap/Parser/XML version 0.68
+Nmap/Parser/XML version 0.69
 ============================
 
 nmap xml output parser in perl
 
 This module is intended to sift through the nmap scan outputs in xml form,
 either by passing a filehandle that is being piped from a current nmap scan
-or passing an xml filename that is the output of the of using the '-oX file.xml'
-option. It uses the XML::Twig library, which is memory efficient and fast.
-In the authors opinion, this module is very easy to use to extract information
-from an nmap xml scan output about the scan itself and the hosts that were
-scanned.
+or using an xml filename that is formatted as the output of nmap when using
+the '-oX file.xml' command line option. It uses the XML::Twig library, which is
+memory efficient and fast. In the authors opinion, this module is very easy to
+use to extract information from an nmap xml scan output about the scan itself
+and the hosts that were scanned.
 
 I am trying to balance efficiency with ease of use. If you think something
 can be done differently send your feedback.
 
 INSTALLATION
 
+The latest version can be found at:
+
+http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+
+Download the file and unpack. This is usually done by:
+
+   tar xvf Nmap-Parser-XML-x.xx.tar.gz
+
+Next change into the newly created directory.
 To install this module type the following:
 
    perl Makefile.PL
@@ -36,32 +45,26 @@ not really need the executable, but the xml output that you will be parsing
 
 CHANGES
 
-
-
-Changes from 0.66 to 0.68
-	- Licensing changes, now under GPL
-	- added signatures for wireless access points (wap)
-	- added os_match shortcut function
-	- Problem with Makefile.PL, didn't pass correct dependencies.
-	- tcp_port_state() and udp_port_state() return the state of the port
-		when passed a port number.
-	- Sorted port order when using tcp_ports and udp_ports
-	- extraports tag parsing. It is also set up as a filter 'extraports'
-		filtering. Added extraports_state and extraports_count to
-		Nmap::Parser::XML::Host class.
-	- Added and fix some documentation
-	- tcp_ports and udp_ports can take a parameter to filter what port list
-		you wish to receive. It selects states based on port content
-		state tag: filtered, closed, or open
-        - previous versions (0.64 or earlier) of the parser, no arguments
-	to tcp_ports and udp_ports would return the whole hashref of all the
-	ports, this is now deprecated. Use the newly created functions
-	tcp_service_name, tcp_service_proto, tcp_service_rpcnum,
-	udp_service_name, udp_service_proto, and udp_service_rpcnum.
-	- changed default filter for solaris to include 'sun' and not 'sunos'
-	- more example scripts
-	- no more wantarray usage for tcp_ports and udp_ports
-	- more test cases
+Changes from 0.68 to 0.69
+	- new utility script : scan_host.pl
+	- added EXAMPLES seciton in documentation
+	- parses new 'version', 'extrainfo', and 'product'
+		att from service tag (3.40+)
+	- added *_service_version to *::Host
+	- added xml_version to *::ScanInfo
+	- more error prevention mechanisms
+	- added os_osfamily, os_gen, os_vendor, os_type added
+	- added OSINFO filter
+	- ::ScanInfo::scan_types does not return number of scan types in scalar
+		format. It will always return an array containing the scan
+		types.
+	- osfamily does not return the actual string (comma delimited), it '
+		always returns an array of os matches.
+	- DEPRECATED: tcpsequence, ipidsequence, tcptssequence
+		now use:
+		tcpsequence_class, tcpsequence_values, tcpsequence_index
+		ipidsequence_class, ipidsequence_values
+		tcptssequence_class, tcptssequence_values
 
 FOR OTHER CHANGE INFORMATION SEE THE "CHANGES" FILE
 
@@ -69,6 +72,14 @@ COPYRIGHT AND LICENCE
 
 Copyright (C) 2003 Anthony G Persaud L<ironstar@iastate.edu>
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+ http://www.opensource.org/licenses/gpl-license.php
+
+This program is free  software; you can redistribute  it and/or modify it  under
+the terms of the  GNU General Public License  as published by the  Free Software
+Foundation; either  version 2  of the  License, or  (at your  option) any  later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT  ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR  A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 

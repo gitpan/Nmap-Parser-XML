@@ -1,5 +1,28 @@
 Revision history for Perl extension Nmap::Parser::XML.
+The latest version can be found at:
 
+http://search.cpan.org/~apersaud/Nmap-Parser-XML/
+
+Changes for 0.69
+	- new utility script : scan_host.pl
+	- added EXAMPLES seciton in documentation
+	- parses new 'version', 'extrainfo', and 'product'
+		att from service tag (3.40+)
+	- added *_service_version to *::Host
+	- added xml_version to *::ScanInfo
+	- more error prevention mechanisms
+	- added os_osfamily, os_gen, os_vendor, os_type added
+	- added OSINFO filter
+	- ::ScanInfo::scan_types does not return number of scan types in scalar
+		format. It will always return an array containing the scan
+		types.
+	- osfamily does not return the actual string (comma delimited), it always
+	returns an array of os matches.
+	- DEPRECATED: tcpsequence, ipidsequence, tcptssequence
+		now use:
+		tcpsequence_class, tcpsequence_values, tcpsequence_index
+		ipidsequence_class, ipidsequence_values
+		tcptssequence_class, tcptssequence_values
 
 
 Changes for 0.68
@@ -68,23 +91,23 @@ Changes for 0.6_4
 	- permanently excluding some static tags using ignore_elts.
 	- added SCANINFO filter.
 
-Changes for 0.6_3
+Changes for 0.60_3
 	- os_port_used, now can return the open or closed port used in OS
 		detection depending on the given parameter.
 
-Changes for 0.6_2
+Changes for 0.60_2
 	- Bug #2968:
 		fixed bogus 'use 5.008' in Makefile.PL (runs on 5.6 also)
 		instead using 5.004
 		fixed minor warnings when compiling with -w
 		added 'use warnings' to _methods test
 
-Changes for 0.6_1
+Changes for 0.60_1
 	- fixed a bug with the test script (finding test file)
 	- made a separate test to test the actual method existance
 	- portability when running the tests using File::Spec.
 
-Changed for 0.6
+Changed for 0.60
 	- better memory management using twig_roots
 	- some bugs with output types and filters
 	- generic_os and all references are now refereed to as 'osfamily'
@@ -100,7 +123,7 @@ Changed for 0.6
 	- additions to Nmap::Parser::XML::Host methods
 		tcpsequence, ipidsequence, tcptssequence
 
-Changes for 0.5
+Changes for 0.50
 	- faster loading module
 	- added more documentation
 	- minor speed improvements
@@ -111,7 +134,7 @@ Changes for 0.5
 		changed hostnames() to take a value a number (see doc)
 		changed os_matches() to take a value a number (see doc)
 
-Changes for 0.4
+Changes for 0.40
 	- added new package called ScanInfo (Nmap::Parser::XML::ScanInfo
         	this contains methods that make it easier to access the
         	scan information

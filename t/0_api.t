@@ -5,7 +5,7 @@ use blib;
 use warnings;
 use File::Spec;
 use Cwd;
-use Test::More tests => 57;
+use Test::More tests => 72;
 use vars qw($host $p $FH $scaninfo @test %test $test);
 use_ok('Nmap::Parser::XML');
 
@@ -21,6 +21,8 @@ num_of_services
 proto_of_scan_type
 scan_types
 start_time
+xml_version
+
 );
 
 my @Host = qw(
@@ -30,27 +32,41 @@ extraports_count
 extraports_state
 hostname
 hostnames
-ipidsequence
+ipidsequence_class
+ipidsequence_values
 os_class
 os_family
+os_gen
 os_match
 os_matches
+os_osfamily
 os_port_used
+os_type
+os_vendor
 status
 tcp_port_state
 tcp_ports
 tcp_ports_count
+tcp_service_extrainfo
 tcp_service_name
+tcp_service_product
 tcp_service_proto
 tcp_service_rpcnum
-tcpsequence
-tcptssequence
+tcp_service_version
+tcpsequence_class
+tcpsequence_index
+tcpsequence_values
+tcptssequence_class
+tcptssequence_values
 udp_port_state
 udp_ports
 udp_ports_count
+udp_service_extrainfo
 udp_service_name
+udp_service_product
 udp_service_proto
 udp_service_rpcnum
+udp_service_version
 uptime_lastboot
 uptime_seconds
 );
@@ -73,7 +89,6 @@ reset_host_callback
 safe_parse
 safe_parsefile
 set_osfamily_list
-
 );
 
 

@@ -1,17 +1,18 @@
-Changes
+Changes				Information about the changes
 examples/example.xml
-examples/nmap.dtd
+examples/nmap.dtd		Old standard for nmap xml
 examples/nmap_std.xml
-examples/port_info.pl
-examples/status_check.pl
-LICENSE
+examples/port_info.pl		Takes port info to a CSV file
+examples/scan_host.pl		Scans a set of hosts and retrieves information
+examples/status_check.pl	Checks the status of hosts
+LICENSE				GPL
 Makefile.PL
 MANIFEST			This list of files
-README
-t/0_api.t
-t/1_parser.t
-t/2_callback.t
-t/3_efficiency.t
-t/nmap_results.xml
-XML.pm
-META.yml                                Module meta-data (added by MakeMaker)
+META.yml
+README				Installation and notes
+t/0_api.t			Tests the API
+t/1_parser.t			Tests the parser
+t/2_callback.t			Test the callback methods
+t/3_efficiency.t		Test the efficiency of the parser with filters
+t/nmap_results.xml		Test file (large)
+XML.pm				Nmap::Parser::XML

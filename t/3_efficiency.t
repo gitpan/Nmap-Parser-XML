@@ -15,7 +15,7 @@ use constant HOST4 => '127.0.0.4';
 use constant HOST5 => '127.0.0.5';
 use constant HOST6 => '127.0.0.6';
 use vars qw($t1 $t2);
-use constant COUNT => 10;
+use constant COUNT =>3 ;
 $|=1;
 
 eval {require Time::HiRes;};
@@ -42,7 +42,7 @@ is($p->get_host(HOST1)->hostname, 'localhost.localdomain','Testing hostname tag'
 isnt($p->get_host(HOST1)->tcp_port_state('111'),undef,'Testing ports no filters');
 #SET UP FOR FILTERS
 $p->clean();
-$p->parse_filters({portinfo => 0,scaninfo => 0,uptime => 0});
+$p->parse_filters({portinfo => 0,scaninfo => 0,uptime => 0, osinfo => 0 , osfamily => 0});
 
 #BENCHMARK WITH FILTERS
 $t2 = [Time::HiRes::gettimeofday()];
@@ -59,5 +59,5 @@ SKIP:
 {
 skip 'No performance improvement from filters',1 if($t1 == $t2 || $t2 == 0 || $t1 == 0);
 ok($t1 > $t2 || $t1 == $t2,"Improvement Ratio: ".sprintf("%.2f",(($t1)/($t2)))." times faster");
- print STDERR "\tFilter Improvement Ratio: ".sprintf("%.2f",(($t1)*100/($t2)))."% faster\n" unless($t1 == $t2 || $t2 == 0 || $t1 == 0);
+# print STDERR "\tFilter Improvement Ratio: ".sprintf("%.2f",(($t1)*100/($t2)))."% faster\n" unless($t1 == $t2 || $t2 == 0 || $t1 == 0);
 }

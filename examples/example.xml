@@ -11,7 +11,7 @@
 <addport state="open" portid="22" protocol="tcp" owner=""/>
 <addport state="open" portid="80" protocol="tcp" owner=""/>
 <ports><extraports state="closed" count="2044" />
-<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" method="table" conf="3"  />
+<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" product="OpenSSH" version="3.5p1" extrainfo="protocol 1.99" method="probed" conf="10" />
 </port>
 <port protocol="tcp" portid="80"><state state="open" /><service name="http" method="table" conf="3"  />
 </port>
@@ -36,7 +36,7 @@
 <addport state="open" portid="937" protocol="udp" owner=""/>
 <addport state="open" portid="111" protocol="udp" owner=""/>
 <ports><extraports state="closed" count="2038" />
-<port protocol="tcp" portid="22"><state state="filtered" /><service name="ssh" method="table" conf="3"  />
+<port protocol="tcp" portid="22"><state state="filtered" /><service name="ssh" product="OpenSSH" version="3.5p1" extrainfo="protocol 1.99" method="probed" conf="10" />
 </port>
 <port protocol="tcp" portid="25"><state state="filtered" /><service name="smtp" method="table" conf="3"  />
 </port>
@@ -70,7 +70,7 @@
 <address addr="127.0.0.4" addrtype="ipv4" />
 <hostnames><hostname name="host1" type="PTR" /></hostnames>
 <ports><extraports state="closed" count="1640" />
-<port protocol="tcp" portid="22"><state state="filtered" /><service name="ssh" method="table" conf="3"  />
+<port protocol="tcp" portid="22"><state state="filtered" /><service name="ssh" product="OpenSSH" version="3.5p1" extrainfo="protocol 1.99" method="probed" conf="10" />
 </port>
 <port protocol="tcp" portid="23"><state state="filtered" /><service name="telnet" method="table" conf="3"  />
 </port>
@@ -92,7 +92,7 @@
 <addport state="open" portid="22" protocol="tcp" owner=""/>
 <addport state="open" portid="80" protocol="tcp" owner=""/>
 <ports><extraports state="closed" count="1640" />
-<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" method="table" conf="3"  />
+<port protocol="tcp" portid="22"><state state="open" /><service name="ssh" product="OpenSSH" version="3.5p1" extrainfo="protocol 1.99" method="probed" conf="10" />
 </port>
 <port protocol="tcp" portid="23"><state state="filtered" /><service name="telnet" method="table" conf="3"  />
 </port>
@@ -151,7 +151,7 @@
 <ipidsequence class="Incremental" values="C4BE,C4C6,C4CC,C4CE,C4D4,C4DC"/>
 <tcptssequence class="none returned (unsupported)"/>
 </host>
-<host><status state="up" />
+<host><status state="down" />
 <address addr="192.168.2.225" addrtype="ipv4" />
 </host>
 <host><status state="up" />
@@ -161,7 +161,7 @@
 <host><status state="up" />
 <address addr="127.0.0.1" addrtype="ipv4" />
 <hostnames><hostname name="localhost.localdomain" type="PTR" /></hostnames>
-<host><status state="up" />
+<host><status state="down" />
 <address addr="192.168.0.100" addrtype="ipv4" />
 </host>
 <uptime seconds="1973" lastboot="Tue Jul  1 14:15:27 2003" />

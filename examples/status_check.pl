@@ -22,7 +22,7 @@ use File::Spec;
 
 my $FH = shift;
 $FH ||= File::Spec->catfile(File::Spec->curdir(),    TEST_FILE);
-$FH ||= File::Spec->catfile(File::Spec->curdir(),'examples',TEST_FILE) if(! -e $FH);
+$FH = File::Spec->catfile(File::Spec->curdir(),'examples',TEST_FILE) if(! -e $FH);
 
 my $p = new Nmap::Parser::XML;
 print "Usage: $0 [input.xml]\n";

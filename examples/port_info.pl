@@ -40,7 +40,7 @@ use File::Spec;
 
 my $FH = shift;
 $FH ||= File::Spec->catfile(File::Spec->curdir(),    TEST_FILE);
-$FH ||= File::Spec->catfile(File::Spec->curdir(),'examples',TEST_FILE) if(! -e $FH);
+$FH = File::Spec->catfile(File::Spec->curdir(),'examples',TEST_FILE) if(! -e $FH);
 my $OUT = shift || OUT_FILE;
 my $p = new Nmap::Parser::XML;
 
@@ -48,7 +48,8 @@ print "Usage: $0 [input.xml] [output.csv]\n";
 print "\nUsing file: $FH\n\n";
 
 $p->parse_filters({only_active => 1});
-$p->parsefile($FH);
+$p->safe_parsefile($FH);
+print $@; #catching the error from parsefile;
 #open your output file (comma delimited)
 open OUT, '>'.$OUT || die "Could not open output file: $OUT\n $!";
 #after parsing, get the host objects
@@ -77,3 +78,11 @@ exit;
 __END__
 
 
+=pod
+
+=head1 NAME
+
+This is it
+
+
+=cut
